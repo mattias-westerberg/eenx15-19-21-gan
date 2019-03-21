@@ -2,7 +2,7 @@ import cv2
 import os
 
 
-input_path = 'images/images/'
+input_path = 'images/'
 output_path = 'night/'
 file_type = '.jpg'
 break_point = 60
