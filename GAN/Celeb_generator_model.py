@@ -3,6 +3,13 @@ import tensorflow.keras.layers as layers
 
 
 def generator(z, out_channel_dim, is_train=True, alpha=0.2, keep_prob=0.5):
+    """
+        Create the generator network
+        :param z: Input z
+        :param out_channel_dim: The number of channels in the output image
+        :param is_train: Boolean if generator is being used for training
+        :return: The tensor output of the generator
+        """
     with tf.variable_creator_scope('generator', reuse=(not is_train)):
         # First fully connected layer, 4x4x1024
         fc = layers.dense(z, 4 * 4 * 1024, use_bias=False)
@@ -29,3 +36,5 @@ def generator(z, out_channel_dim, is_train=True, alpha=0.2, keep_prob=0.5):
         out = tf.tanh(logits)
 
         return out
+
+gen = generator('night.jpg', 3)
