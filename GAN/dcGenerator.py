@@ -7,6 +7,7 @@ import tensorflow as tf
 class Generator:
     def __init__(self):
         self.model = None
+        self.generated_image = None
 
     def make_generator_model(self):
         """Currently input size is 100x100"""
@@ -19,6 +20,7 @@ class Generator:
         model.add(layers.LeakyReLU())           # No negative values
 
         model.add(layers.Reshape((7, 7, 256)))
+        # Simple assert to check resolution and color channels
         assert model.output_shape == (None, 7, 7, 256)  # Note: None is the batch size
 
         # Strides=(1, 1) to keep the resolution
@@ -41,6 +43,9 @@ class Generator:
         assert model.output_shape == (None, 28, 28, 3)
 
         return self.model
+
+    def generated_image(self, input_image):
+        self.generated_image = self.model(input_image, training=False)
 
 
 gen = Generator()
