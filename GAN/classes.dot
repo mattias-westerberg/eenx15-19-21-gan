@@ -1,0 +1,25 @@
+digraph "classes" {
+charset="utf-8"
+rankdir=BT
+"0" [label="{BulkSaverBuilder|\l|bulk_restore()\l}", shape="record"];
+"1" [label="{Disctriminator|\l|}", shape="record"];
+"2" [label="{FileWriter|\l|add_event()\lclose()\lflush()\lget_logdir()\lreopen()\l}", shape="record"];
+"3" [label="{GAN|D\lD_\lD_logits : tuple\lD_logits_ : tuple\lG\lG_input_sum : str\lG_output_sum : str\lbatch_size : int\lc_dim : int\lcheckpoint_dir : NoneType\ld__sum : str\ld_loss\ld_loss_fake\ld_loss_fake_sum : str\ld_loss_real\ld_loss_real_sum : str\ld_loss_sum : str\ld_sum : str\ld_vars\ldiscriminator\lg_loss\lg_loss_sum : str\lg_sum : str\lg_vars\lgenerator\limage_shape : list\limage_size : int\limages_input\limages_real\linput_transform : str\lis_training\llam : float\llowres_size : int\lmodel_name : str\lsample_size : int\lsaver\lsess\lwriter\l|build_model()\lload()\lsave()\ltrain()\l}", shape="record"];
+"4" [label="{Generator|\l|}", shape="record"];
+"5" [label="{ImageGenerator|batch_size\lbns0\lbns1\lgf0_dim\lgf1_dim\lgfc_dim\lh0_b\lh0_w\limage_size\lz_\l|}", shape="record"];
+"6" [label="{Saver|last_checkpoints\lsaver_def : NoneType\l|as_saver_def()\lbuild()\lexport_meta_graph()\lfrom_proto()\lrecover_last_checkpoints()\lrestore()\lsave()\lset_last_checkpoints()\lset_last_checkpoints_with_time()\lto_proto()\l}", shape="record"];
+"7" [label="{SaverDef|\l|}", shape="record"];
+"8" [label="{TestDisctriminator|d_bns\ldf_dim\ldfc_dim\l|}", shape="record"];
+"9" [label="{TestGenerator|batch_size\lg_bns\lgf_dim\lgfc_dim\lh0_b\lh0_w\limage_out_size\lz_\lz_dim\l|}", shape="record"];
+"10" [label="{batch_norm|epsilon : float\lmomentum : float\lname : str\l|}", shape="record"];
+"5" -> "4" [arrowhead="empty", arrowtail="none"];
+"8" -> "1" [arrowhead="empty", arrowtail="none"];
+"9" -> "4" [arrowhead="empty", arrowtail="none"];
+"0" -> "6" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="_builder", style="solid"];
+"2" -> "3" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="writer", style="solid"];
+"5" -> "3" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="generator", style="solid"];
+"6" -> "3" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="saver", style="solid"];
+"6" -> "6" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="_object_restore_saver", style="solid"];
+"7" -> "6" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="saver_def", style="solid"];
+"8" -> "3" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="discriminator", style="solid"];
+}

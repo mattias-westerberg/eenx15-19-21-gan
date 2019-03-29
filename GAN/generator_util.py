@@ -19,7 +19,7 @@ class ImageGenerator(Generator):
         self.gf1_dim = gf1_dim   
         self.gfc_dim = gfc_dim
         self.image_size = image_size
-        self.batch_size = batch_size
+        self.batch_size = tf.placeholder(tf.float32, batch_size, name='g_batch_size')
 
         self.bns0 = [batch_norm(name="g_bn0{}".format(i,)) for i in range(4)]
 
@@ -45,6 +45,10 @@ class ImageGenerator(Generator):
             depth_mul = 8   #depth decreases as spatial component increases
             size=8          #size increases as depth decreases
             
+            # IMPORTANT: Updates the batch size dynamically for the conv2d-layers
+            # to not fail when we change the batch size during runtime
+            self.batch_size = tf.shape(image)[0]
+
             while size < self.image_size:
                 name='g_h{}'.format(i)
                 with tf.variable_scope(name):

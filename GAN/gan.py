@@ -75,7 +75,8 @@ class GAN:
 
         self.d_sum = tf.summary.histogram("d", self.D)
         self.d__sum = tf.summary.histogram("d_", self.D_)
-        self.G_sum = tf.summary.image("G", self.G)
+        self.G_input_sum = tf.summary.image("g_input", self.images_input)
+        self.G_output_sum = tf.summary.image("g_output", self.G)
 
         self.d_loss_real = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits,
@@ -121,10 +122,9 @@ class GAN:
             
         #self.g_sum = tf.summary.merge([self.images_input_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
         #self.d_sum = tf.summary.merge([self.images_input_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
-        self.g_sum = tf.summary.merge([self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
+        self.g_sum = tf.summary.merge([self.d__sum, self.G_input_sum, self.G_output_sum, self.d_loss_fake_sum, self.g_loss_sum])
         self.d_sum = tf.summary.merge([self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
-        
         
         sample_files_input = data_input[0:self.sample_size]  
         sample_input = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_input]
@@ -176,9 +176,9 @@ class GAN:
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
                         epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
                 
-                if np.mod(counter, 3) == 1:
+                if np.mod(counter, 10) == 1:
                     samples, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
-                                                            feed_dict={self.images_input: batch_images_real, self.images_real: batch_images_real, self.is_training: False})
+                                                            feed_dict={self.images_input: sample_images_input, self.images_real: sample_images_real, self.is_training: False})
                     util.save_images(samples, [8,8], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
                     

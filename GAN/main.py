@@ -9,7 +9,7 @@ import os
 # ARG2 = DEFAULT VALUE
 # ARG3 = DESCRIPTION
 flags = tf.app.flags
-flags.DEFINE_integer("epoch", 20, "Number of epochs to train [20]")
+flags.DEFINE_integer("epoch", 200, "Number of epochs to train [20]")
 flags.DEFINE_float("learning_rate", 0.0002, "Learning rate for adam optimiser [0.0002]")
 flags.DEFINE_float("beta1", 0.5, "Momentum term for adam optimiser [0.5]")
 flags.DEFINE_integer("train_size", 100, "The size of training images [np.inf]")
@@ -29,9 +29,9 @@ if not os.path.exists(FLAGS.sample_dir):
 # Options to limit GPU usage
 # Fixed the problem: tensorflow/stream_executor/cuda/cuda_dnn.cc:334] Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.5
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
 config.gpu_options.allow_growth = True 
-#config.intra_op_parallelism_threads = 8
+config.intra_op_parallelism_threads = 8
 
 with tf.Session(config=config) as sess:
     dcgan = GAN(sess, image_size=FLAGS.image_size, batch_size=FLAGS.batch_size,
