@@ -1,31 +1,61 @@
 import numpy as np
 import scipy.misc
+import os
 
-#IMAGE LOAD WRAPPER
-""" Loads the image and crops it to 'image_size'
+TRANSFORM_CROP = "crop"
+TRANSFORM_RESIZE = "resize"
+SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
 
-PARAMETERS
-is_crop:    whether to crop the image or not [True or False]
+"""
+Produces a list of supported filetypes from the specified directory.
 
 INPUTS
-image_path: location of the image
-image_size: size (in pixels) of the output image
+directory:    the directory path containing the files
 
 RETURNS
-- the cropped image
+- a list of the files
 """
-def get_image(image_path, image_size, is_crop=True):
-    return transform(imread(image_path), image_size, is_crop)
+def get_paths(directory):
+    paths = [os.path.join(directory, f) for f in os.listdir(directory) if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS)]
+    return paths
 
-#IMAGE READER FUNCTION
-""" Reads in the image (part of get_image function)
+def get_image(image_path, image_size, input_transform=TRANSFORM_RESIZE):
+    """ Loads the image and transforms it to 'image_size'
 
-INPUT
-path: location of the image
-"""
+    Args:
+        input_transform:    the method used to reshape the image
+        image_path: location of the image
+        image_size: size (in pixels) of the output image
+
+    Returns:
+        the cropped image
+    """
+    return transform(imread(image_path), image_size, input_transform)
+
 def imread(path):
+    """ Reads in the image (part of get_image function)"""
     return scipy.misc.imread(path, mode='RGB').astype(np.float)
 
+# TRANSFORM/CROPPING WRAPPER
+""" Transforms the image by cropping and resizing and 
+normalises intensity values between -1 and 1
+
+INPUT
+image:      the image to be transformed
+npx:        the size of the transformed image [npx x npx]
+is_crop:    whether to preform cropping too [True or False]
+
+RETURNS
+- the transformed, normalised image
+"""
+def transform(image, npx=64, input_transform=TRANSFORM_RESIZE):
+    if input_transform == TRANSFORM_CROP:
+        output = center_crop(image, npx)
+    elif input_transform == TRANSFORM_RESIZE:
+        output = scipy.misc.imresize(image, (npx, npx), interp='bicubic')
+    else:
+        output = image
+    return np.array(output) / 127.5 - 1.0
 
 # IMAGE CROPPING FUNCTION
 """ Crops the input image at the centre pixel
@@ -45,30 +75,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
     h, w = x.shape[:2]
     j = int(round((h - crop_h)/2.))
     i = int(round((w - crop_w)/2.))
-    return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w],
-                               [resize_w, resize_w])
-
-# TRANSFORM/CROPPING WRAPPER
-""" Transforms the image by cropping and resizing and 
-normalises intensity values between -1 and 1
-
-INPUT
-image:      the image to be transformed
-npx:        the size of the transformed image [npx x npx]
-is_crop:    whether to preform cropping too [True or False]
-
-RETURNS
-- the cropped, normalised image
-"""
-def transform(image, npx=64, is_crop=True):
-    if is_crop:
-        cropped_image = center_crop(image, npx)
-    else:
-        cropped_image = image
-    return np.array(cropped_image)/127.5 - 1.
-
-
-
+    return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w], [resize_w, resize_w])
 
 #CREATE IMAGE ARRAY FUNCTION
 """ Takes a set of 'images' and creates an array from them.
@@ -104,7 +111,7 @@ RETURNS
 """
 def imsave(images, size, path):
     img = merge(images, size)
-    return scipy.misc.imsave(path, (255*img).astype(np.uint8))
+    return scipy.misc.imsave(path, (255 * img).astype(np.uint8))
 
 #SAVE IMAGE FUNCTION
 """ takes an image and saves it to disk. Redistributes
@@ -125,5 +132,4 @@ RETURNS
 -the transformed image
 """
 def inverse_transform(images):
-    return (images+1.)/2.
-    
+    return (images + 1.0) / 2.

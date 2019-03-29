@@ -22,11 +22,10 @@ RETURNS
  - A tensor representing the output of the batch_norm operation
 """
 class batch_norm(object):
-    def __init__(self, epsilon=1e-5, momentum = 0.9, name="batch_norm"):
+    def __init__(self, epsilon=1e-5, momentum=0.9, name="batch_norm"):
         with tf.variable_scope(name):
             self.epsilon = epsilon
             self.momentum = momentum
-
             self.name = name
 
     def __call__(self, x, train):
@@ -69,7 +68,6 @@ def conv2d(input_, output_dim, k_h=5, k_w=5, d_h=2, d_w=2, stddev=0.02, name="co
         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding='SAME')
 
         biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
-        # conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
         conv = tf.nn.bias_add(conv, biases)
 
         return conv   
@@ -156,5 +154,3 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
             return tf.matmul(input_, matrix) + bias, matrix, bias
         else:
             return tf.matmul(input_, matrix) + bias
-    
-    
