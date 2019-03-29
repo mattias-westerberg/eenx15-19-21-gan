@@ -249,15 +249,13 @@ day_image = load('C:\mattiasGit\eenx15-19-21-gan\GAN\day.png')
 pix_night = generator.model.predict(night_image)
 print(discriminator.model.predict(pix_night))
 
-train_step(real_image, night_image)
+plt.figure()
+plt.subplot(121)
+plt.imshow(night_image[0]/255.0)
+plt.title('Grounds Truth')
+plt.subplot(122)
+plt.imshow(pix_night[0])
+plt.title('Generated image')
 
-# plt.figure()
-# plt.subplot(121)
-# plt.imshow(night_image[0]/255.0)
-# plt.title('Grounds Truth')
-# plt.subplot(122)
-# plt.imshow(pix_night[0])
-# plt.title('Generated image')
-#
-# plt.show()
+plt.show()
 
