@@ -28,8 +28,8 @@ checkpoint_dir:   where to store the TensorFlow checkpoints
 lam:  small constant weight for the sum of contextual and perceptual loss
 """
 class GAN:
-    def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=64, z_dim=100,
-                gf_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, checkpoint_dir=None, lam=0.1, lowres_size=32):
+    def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=64,
+                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, checkpoint_dir=None, lam=0.1, lowres_size=32):
         #image_size must be power of 2 and 8+
         assert(image_size & (image_size - 1) == 0 and image_size >= 8)
 
@@ -40,7 +40,7 @@ class GAN:
         self.sample_size = sample_size
         self.image_shape = [image_size, image_size, c_dim]
 
-        self.generator = generator_util.TestGenerator(z_dim, gf_dim, gfc_dim, image_size, batch_size)
+        self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
         self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
 
         self.lam = lam
@@ -53,23 +53,24 @@ class GAN:
         self.model_name="DCGAN.model"
 
     def build_model(self):
-        self.is_training = tf.placeholder(tf.bool, name='is_training')
-        self.images = tf.placeholder(tf.float32, [None] + self.image_shape, name='real_images')
         """
-        self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
+        self.lowres_images = tf.reduce_mean(tf.reshape(self.images_real,
             [self.batch_size, self.lowres_size, self.lowres_size,
-             self.lowres_size, self.lowres_size, self.c_dim]), [2, 4])
-        """
-        self.z = tf.placeholder(tf.float32, [None, self.generator.z_dim], name='z')
-        self.z_sum = tf.summary.histogram("z", self.z)
-
-        self.G = self.generator(self.z, self.is_training)
-        """
+                self.lowres_size, self.lowres_size, self.c_dim]), [2, 4])
         self.lowres_G = tf.reduce_mean(tf.reshape(self.G,
             [self.batch_size, self.lowres_size, self.lowres_size,
-             self.lowres_size, self.lowres_size, self.c_dim]), [2, 4])
+                self.lowres_size, self.lowres_size, self.c_dim]), [2, 4])
         """
-        self.D, self.D_logits = self.discriminator(self.images, is_training=self.is_training)
+
+        self.is_training = tf.placeholder(tf.bool, name='is_training')
+
+        self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_real')
+        self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_input')
+        #self.images_input_sum = tf.summary.histogram("images_input", self.images_input)
+
+        self.G = self.generator(self.images_input, self.is_training)
+        
+        self.D, self.D_logits = self.discriminator(self.images_real, is_training=self.is_training)
         self.D_, self.D_logits_ = self.discriminator(self.G, reuse=True, is_training=self.is_training)
 
         self.d_sum = tf.summary.histogram("d", self.D)
@@ -96,15 +97,19 @@ class GAN:
 
         t_vars = tf.trainable_variables()
 
+        #IMPORTANT PREFIXES
         self.d_vars = [var for var in t_vars if 'd_' in var.name]
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
 
         self.saver = tf.train.Saver(max_to_keep=1)
 
     def train(self, config):
-        data = util.get_paths(config.dataset)
-        np.random.shuffle(data)
-        assert(len(data) > 0)
+        data_input = util.get_paths(config.dataset_input)
+        data_real = util.get_paths(config.dataset_real)
+        np.random.shuffle(data_input)
+        np.random.shuffle(data_real)
+
+        assert(len(data_input) > 0 and len(data_real) > 0)
         
         d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.d_loss, var_list=self.d_vars)
         g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.g_loss, var_list=self.g_vars)
@@ -114,15 +119,20 @@ class GAN:
         except:
             tf.initialize_all_variables().run()
             
-        self.g_sum = tf.summary.merge([self.z_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
-        self.d_sum = tf.summary.merge([self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+        #self.g_sum = tf.summary.merge([self.images_input_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
+        #self.d_sum = tf.summary.merge([self.images_input_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+        self.g_sum = tf.summary.merge([self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
+        self.d_sum = tf.summary.merge([self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
         
-        sample_z = np.random.uniform(-1, 1, size=(self.sample_size, self.generator.z_dim))
-
-        sample_files = data[0:self.sample_size]        
-        sample = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files]
-        sample_images = np.array(sample).astype(np.float32)
+        
+        sample_files_input = data_input[0:self.sample_size]  
+        sample_input = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_input]
+        sample_images_input = np.array(sample_input).astype(np.float32)
+        
+        sample_files_real = data_real[0:self.sample_size]  
+        sample_real = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_real]
+        sample_images_real = np.array(sample_real).astype(np.float32)
         
         counter = 1
         start_time = time.time()
@@ -133,42 +143,42 @@ class GAN:
             print(""" No model found - initializing a new one""")
         
         for epoch in range(config.epoch):
-            data = util.get_paths(config.dataset)
-            batch_idxs = min(len(data), config.train_size) // self.batch_size
+            batch_idxs = min(len(data_input), config.train_size) // self.batch_size
 
             for idx in range(batch_idxs):
-                batch_files = data[idx*config.batch_size:(idx+1)*config.batch_size]
-                batch = [util.get_image(batch_file, self.image_size, input_transform=self.input_transform) for batch_file in batch_files]
-                batch_images = np.array(batch).astype(np.float32)
-                
-                batch_z = np.random.uniform(-1, 1, [config.batch_size, self.generator.z_dim]).astype(np.float32)
+                batch_files_input = data_input[idx*config.batch_size:(idx+1)*config.batch_size]
+                batch_files_real = data_real[idx*config.batch_size:(idx+1)*config.batch_size]
+                batch_input = [util.get_image(batch_file, self.image_size, input_transform=self.input_transform) for batch_file in batch_files_input]
+                batch_real = [util.get_image(batch_file, self.image_size, input_transform=self.input_transform) for batch_file in batch_files_real]
+                batch_images_input = np.array(batch_input).astype(np.float32)
+                batch_images_real = np.array(batch_real).astype(np.float32)
                 
                 #update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
-                                               feed_dict={self.images: batch_images, self.z: batch_z, self.is_training: True})
+                                               feed_dict={self.images_real: batch_images_real, self.images_input: batch_images_input, self.is_training: True})
                 self.writer.add_summary(summary_str, counter)
                 
                 #update G network
                 _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.z: batch_z, self.is_training: True})
+                                               feed_dict={self.images_input: batch_images_input, self.is_training: True})
                 self.writer.add_summary(summary_str, counter)
                 
                 #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
                 _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.z: batch_z, self.is_training: True})
+                                               feed_dict={self.images_input: batch_images_input, self.is_training: True})
                 self.writer.add_summary(summary_str, counter)
                 
-                errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.is_training: False})
-                errD_real = self.d_loss_real.eval({self.images: batch_images, self.is_training: False})
-                errG = self.g_loss.eval({self.z: batch_z, self.is_training: False})
+                errD_fake = self.d_loss_fake.eval({self.images_input: batch_images_input, self.is_training: False})
+                errD_real = self.d_loss_real.eval({self.images_real: batch_images_real, self.is_training: False})
+                errG = self.g_loss.eval({self.images_input: batch_images_input, self.is_training: False})
                 
                 counter += 1
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
                         epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
                 
-                if np.mod(counter, 5) == 1:
+                if np.mod(counter, 3) == 1:
                     samples, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
-                                                            feed_dict={self.z: sample_z, self.images: sample_images, self.is_training: False})
+                                                            feed_dict={self.images_input: batch_images_real, self.images_real: batch_images_real, self.is_training: False})
                     util.save_images(samples, [8,8], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
                     
