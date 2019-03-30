@@ -1,13 +1,9 @@
-
 # https://mlnotebook.github.io/post/GAN5/
 import tensorflow as tf
 from gan import GAN
-import os
 
-#DEFINE THE FLAGS FOR RUNNING SCRIPT FROM THE TERMINAL
-# ARG1 = NAME OF THE FLAG
-# ARG2 = DEFAULT VALUE
-# ARG3 = DESCRIPTION
+# DEFINE THE FLAGS FOR RUNNING SCRIPT FROM THE TERMINAL
+# (ARG1, ARG2, ARG3) = (NAME OF THE FLAG, DEFAULT VALUE, DESCRIPTION)
 flags = tf.app.flags
 flags.DEFINE_integer("epoch", 200, "Number of epochs to train [20]")
 flags.DEFINE_float("learning_rate", 0.0002, "Learning rate for adam optimiser [0.0002]")
@@ -21,11 +17,6 @@ flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the 
 flags.DEFINE_string("sample_dir", "samples", "Directory name to save the image samples [samples]")
 FLAGS = flags.FLAGS
 
-if not os.path.exists(FLAGS.checkpoint_dir):
-    os.makedirs(FLAGS.checkpoint_dir)
-if not os.path.exists(FLAGS.sample_dir):
-    os.makedirs(FLAGS.sample_dir)
-    
 # Options to limit GPU usage
 # Fixed the problem: tensorflow/stream_executor/cuda/cuda_dnn.cc:334] Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
 config = tf.ConfigProto()

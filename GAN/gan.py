@@ -1,36 +1,32 @@
 from __future__ import division
 import os
 import time
-import math
-import itertools
-from glob import glob
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
 import util
-from layers import *
 import discriminator_util
 import generator_util
 
-"""
-The parameters are:
-sess:   the TensorFlow session to run in
-image_size:   the width of the images, which should be the same as the height as we like square inputs
-input_transform:   how to pre-process the input images
-batch_size:   number of images to use in each run
-sample_size:   number of z samples to take on each run, should be equal to batch_size
-z_dim:   number of samples to take for each z
-gf_dim:   dimension of generator filters in first conv layer
-df_dim:   dimenstion of discriminator filters in first conv layer
-gfc_dim:   dimension of generator units for fully-connected layer
-dfc_gim:   dimension of discriminator units for fully-connected layer
-c_dim:   number of image cannels (gray=1, RGB=3)
-checkpoint_dir:   where to store the TensorFlow checkpoints
-lam:  small constant weight for the sum of contextual and perceptual loss
-"""
 class GAN:
+    """
+    PARAMETERS
+        sess:   the TensorFlow session to run in
+        image_size:   the width of the images, which should be the same as the height as we like square inputs
+        input_transform:   how to pre-process the input images
+        batch_size:   number of images to use in each run
+        sample_size:   number of z samples to take on each run, should be equal to batch_size
+        z_dim:   number of samples to take for each z
+        gf_dim:   dimension of generator filters in first conv layer
+        df_dim:   dimenstion of discriminator filters in first conv layer
+        gfc_dim:   dimension of generator units for fully-connected layer
+        dfc_gim:   dimension of discriminator units for fully-connected layer
+        c_dim:   number of image cannels (gray=1, RGB=3)
+        checkpoint_dir:   where to store the TensorFlow checkpoints
+    """
     def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=64,
-                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, checkpoint_dir=None, lam=0.1, lowres_size=32):
-        #image_size must be power of 2 and 8+
+                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, checkpoint_dir=None):
+        # image_size must be power of 2 and 8+
         assert(image_size & (image_size - 1) == 0 and image_size >= 8)
 
         self.sess = sess
@@ -43,30 +39,15 @@ class GAN:
         self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
         self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
 
-        self.lam = lam
-        self.c_dim = c_dim
-        self.lowres_size = lowres_size
-
         self.checkpoint_dir = checkpoint_dir
         self.build_model()
 
         self.model_name="DCGAN.model"
 
     def build_model(self):
-        """
-        self.lowres_images = tf.reduce_mean(tf.reshape(self.images_real,
-            [self.batch_size, self.lowres_size, self.lowres_size,
-                self.lowres_size, self.lowres_size, self.c_dim]), [2, 4])
-        self.lowres_G = tf.reduce_mean(tf.reshape(self.G,
-            [self.batch_size, self.lowres_size, self.lowres_size,
-                self.lowres_size, self.lowres_size, self.c_dim]), [2, 4])
-        """
-
         self.is_training = tf.placeholder(tf.bool, name='is_training')
-
         self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_real')
         self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_input')
-        #self.images_input_sum = tf.summary.histogram("images_input", self.images_input)
 
         self.G = self.generator(self.images_input, self.is_training)
         
@@ -98,7 +79,6 @@ class GAN:
 
         t_vars = tf.trainable_variables()
 
-        #IMPORTANT PREFIXES
         self.d_vars = [var for var in t_vars if 'd_' in var.name]
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
 
@@ -119,18 +99,16 @@ class GAN:
             tf.global_variables_initializer().run()
         except:
             tf.initialize_all_variables().run()
-            
-        #self.g_sum = tf.summary.merge([self.images_input_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
-        #self.d_sum = tf.summary.merge([self.images_input_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+        
         self.g_sum = tf.summary.merge([self.d__sum, self.G_input_sum, self.G_output_sum, self.d_loss_fake_sum, self.g_loss_sum])
         self.d_sum = tf.summary.merge([self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
         
-        sample_files_input = data_input[0:self.sample_size]  
+        sample_files_input = data_input[0:self.sample_size]
         sample_input = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_input]
         sample_images_input = np.array(sample_input).astype(np.float32)
         
-        sample_files_real = data_real[0:self.sample_size]  
+        sample_files_real = data_real[0:self.sample_size]
         sample_real = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_real]
         sample_images_real = np.array(sample_real).astype(np.float32)
         
@@ -185,16 +163,15 @@ class GAN:
                 if np.mod(counter, 10) == 2:
                     self.save(config.checkpoint_dir, counter)
 
-
     def save(self, checkpoint_dir, step):
+        """Save the current state of the model to the checkpoint directory"""
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-            
         self.saver.save(self.sess, os.path.join(checkpoint_dir, self.model_name), global_step=step)
 
     def load(self, checkpoint_dir):
+        """Load a model from the checkpoint directory if it exists"""
         print(" [*] Reading checkpoints...")
-        
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and ckpt.model_checkpoint_path:
             self.saver.restore(self.sess, ckpt.model_checkpoint_path)

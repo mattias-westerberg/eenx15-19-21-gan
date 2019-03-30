@@ -33,7 +33,7 @@ class ImageGenerator(Generator):
             x2 = lrelu(self.bns0[1](conv2d(x1, self.gf0_dim*4, name='g_02_conv'), is_training))
             x3 = lrelu(self.bns0[2](conv2d(x2, self.gf0_dim*8, name='g_03_conv'), is_training))
             x4 = linear(tf.reshape(x3, [-1, 8192]), 32, 'g_04_lin')
-            z = tf.nn.sigmoid(x4)
+            z = x4
 
             self.z_, self.h0_w, self.h0_b = linear(z, self.gf1_dim*8*4*4, 'g_h0_lin', with_w=True)
 
