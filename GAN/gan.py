@@ -36,8 +36,13 @@ class GAN:
         self.sample_size = sample_size
         self.image_shape = [image_size, image_size, c_dim]
 
-        self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
-        self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
+        #self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
+        #self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
+
+        self.generator = generator_util.NordhGenerator(image_size)
+        self.discriminator = discriminator_util.NordhDisctriminator(image_size)
+        print(self.generator.model.summary())
+        print(self.discriminator.model.summary())
 
         self.checkpoint_dir = checkpoint_dir
         self.build_model()
@@ -77,10 +82,10 @@ class GAN:
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
 
-        t_vars = tf.trainable_variables()
-
-        self.d_vars = [var for var in t_vars if 'd_' in var.name]
-        self.g_vars = [var for var in t_vars if 'g_' in var.name]
+        #self.d_vars = [var for var in t_vars if 'd_' in var.name]
+        #self.g_vars = [var for var in t_vars if 'g_' in var.name]
+        self.d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
+        self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
         self.saver = tf.train.Saver(max_to_keep=1)
 
