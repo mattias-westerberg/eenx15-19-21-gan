@@ -25,7 +25,7 @@ class GAN:
         checkpoint_dir:   where to store the TensorFlow checkpoints
     """
     def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=64,
-                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, checkpoint_dir=None):
+                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, checkpoint_dir=None):
         # image_size must be power of 2 and 8+
         assert(image_size & (image_size - 1) == 0 and image_size >= 8)
 
@@ -35,6 +35,9 @@ class GAN:
         self.image_size = image_size
         self.sample_size = sample_size
         self.image_shape = [image_size, image_size, c_dim]
+
+        self.sample_interval = sample_interval
+        self.checkpoint_interval = checkpoint_interval
 
         #self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
         #self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
@@ -159,13 +162,13 @@ class GAN:
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
                         epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
                 
-                if np.mod(counter, 10) == 1:
+                if np.mod(counter, self.sample_interval) == 1:
                     samples, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
                                                             feed_dict={self.images_input: sample_images_input, self.images_real: sample_images_real, self.is_training: False})
                     util.save_images(samples, [8,8], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
                     
-                if np.mod(counter, 10) == 2:
+                if np.mod(counter, self.checkpoint_interval) == 2:
                     self.save(config.checkpoint_dir, counter)
 
     def save(self, checkpoint_dir, step):

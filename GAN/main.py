@@ -15,6 +15,8 @@ flags.DEFINE_string("dataset_real", "test_images_night", "Real dataset directory
 flags.DEFINE_string("dataset_input", "test_images_day", "Input dataset directory.")
 flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
 flags.DEFINE_string("sample_dir", "samples", "Directory name to save the image samples [samples]")
+flags.DEFINE_integer("sample_interval", 10, "Number of epochs between samples [16]")
+flags.DEFINE_integer("checkpoint_interval", 10, "Number of epochs between checkpoints [32]")
 FLAGS = flags.FLAGS
 
 # Options to limit GPU usage
@@ -26,5 +28,5 @@ config.intra_op_parallelism_threads = 8
 
 with tf.Session(config=config) as sess:
     dcgan = GAN(sess, image_size=FLAGS.image_size, batch_size=FLAGS.batch_size,
-                  input_transform="resize", checkpoint_dir=FLAGS.checkpoint_dir)
+                  input_transform="resize", checkpoint_dir=FLAGS.checkpoint_dir, sample_interval=FLAGS.sample_interval, checkpoint_interval=FLAGS.checkpoint_interval)
     dcgan.train(FLAGS)
