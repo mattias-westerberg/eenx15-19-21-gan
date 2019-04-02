@@ -5,8 +5,8 @@ import numpy as np
 import tensorflow as tf
 
 import util
-import discriminator_util
-import generator_util
+from generators.nordh_generator import NordhGenerator
+from discriminators.nordh_discriminator import NordhDisctriminator
 
 class GAN:
     """
@@ -42,8 +42,8 @@ class GAN:
         #self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
         #self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
 
-        self.generator = generator_util.NordhGenerator(image_size)
-        self.discriminator = discriminator_util.NordhDisctriminator(image_size)
+        self.generator = NordhGenerator(image_size)
+        self.discriminator = NordhDisctriminator(image_size)
         print(self.generator.model.summary())
         print(self.discriminator.model.summary())
 
