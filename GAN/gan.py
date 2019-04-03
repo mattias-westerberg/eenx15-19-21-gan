@@ -59,23 +59,23 @@ class GAN:
 
         self.G = self.generator(self.images_input, self.is_training)
         
-        self.D, self.D_logits = self.discriminator(self.images_real, is_training=self.is_training)
-        self.D_, self.D_logits_ = self.discriminator(self.G, reuse=True, is_training=self.is_training)
+        self.D_real, self.D_real_logits = self.discriminator(self.images_real, is_training=self.is_training)
+        self.D_fake, self.D_fake_logits = self.discriminator(self.G, reuse=True, is_training=self.is_training)
 
-        self.d_sum = tf.summary.histogram("d", self.D)
-        self.d__sum = tf.summary.histogram("d_", self.D_)
+        self.d_real_sum = tf.summary.histogram("d_real", self.D_real)
+        self.d_fake_sum = tf.summary.histogram("d_fake", self.D_fake)
         self.G_input_sum = tf.summary.image("g_input", self.images_input)
         self.G_output_sum = tf.summary.image("g_output", self.G)
 
         self.d_loss_real = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits,
-                                                    labels=tf.ones_like(self.D)))
+            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real_logits,
+                                                    labels=tf.ones_like(self.D_real)))
         self.d_loss_fake = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits_,
-                                                    labels=tf.zeros_like(self.D_)))
+            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
+                                                    labels=tf.zeros_like(self.D_fake)))
         self.g_loss = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits_,
-                                                    labels=tf.ones_like(self.D_)))
+            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
+                                                    labels=tf.ones_like(self.D_fake)))
 
         self.d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
@@ -108,8 +108,8 @@ class GAN:
         except:
             tf.initialize_all_variables().run()
         
-        self.g_sum = tf.summary.merge([self.d__sum, self.G_input_sum, self.G_output_sum, self.d_loss_fake_sum, self.g_loss_sum])
-        self.d_sum = tf.summary.merge([self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+        self.g_sum = tf.summary.merge([self.d_fake_sum, self.G_input_sum, self.G_output_sum, self.d_loss_fake_sum, self.g_loss_sum])
+        self.d_sum = tf.summary.merge([self.d_real_sum, self.d_loss_real_sum, self.d_loss_sum])
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
         
         sample_files_input = data_input[0:self.sample_size]
