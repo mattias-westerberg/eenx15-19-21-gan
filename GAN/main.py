@@ -8,7 +8,7 @@ flags = tf.app.flags
 flags.DEFINE_integer("epoch", 200, "Number of epochs to train [20]")
 flags.DEFINE_float("learning_rate", 0.0002, "Learning rate for adam optimiser [0.0002]")
 flags.DEFINE_float("beta1", 0.5, "Momentum term for adam optimiser [0.5]")
-flags.DEFINE_integer("train_size", 100, "The size of training images [np.inf]")
+flags.DEFINE_integer("train_size", 1000, "The size of training images [np.inf]")
 flags.DEFINE_integer("batch_size", 16, "The batch-size (number of images to train at once) [64]")
 flags.DEFINE_integer("image_size", 64, "The size of the images [n x n] [64]")
 flags.DEFINE_string("dataset_real", "test_images_night", "Real dataset directory.")

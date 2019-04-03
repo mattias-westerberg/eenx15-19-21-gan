@@ -4,7 +4,9 @@ import time
 import numpy as np
 import tensorflow as tf
 
-import util
+from util import util
+from generators.even_generator import EvenGenerator
+from generators.suhren_generator import SuhrenGenerator
 from generators.nordh_generator import NordhGenerator
 from discriminators.nordh_discriminator import NordhDisctriminator
 
@@ -27,7 +29,7 @@ class GAN:
     def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=64,
                 gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, checkpoint_dir=None):
         # image_size must be power of 2 and 8+
-        assert(image_size & (image_size - 1) == 0 and image_size >= 8)
+        assert(util.is_pow2(image_size) and image_size >= 8)
 
         self.sess = sess
         self.input_transform = input_transform
@@ -42,7 +44,7 @@ class GAN:
         #self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
         #self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
 
-        self.generator = NordhGenerator(image_size)
+        self.generator = EvenGenerator(image_size)
         self.discriminator = NordhDisctriminator(image_size)
         print(self.generator.model.summary())
         print(self.discriminator.model.summary())
@@ -85,8 +87,6 @@ class GAN:
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
 
-        #self.d_vars = [var for var in t_vars if 'd_' in var.name]
-        #self.g_vars = [var for var in t_vars if 'g_' in var.name]
         self.d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
         self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 

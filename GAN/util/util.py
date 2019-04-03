@@ -2,9 +2,15 @@ import numpy as np
 import scipy.misc
 import os
 
+print("util.py's __name__: {}".format(__name__))
+print("util.py's __package__: {}".format(__package__))
+
 TRANSFORM_CROP = "crop"
 TRANSFORM_RESIZE = "resize"
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
+
+def is_pow2(x):
+    return x & (x - 1) == 0
 
 def get_paths(directory):
     """
