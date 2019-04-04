@@ -93,8 +93,17 @@ class GAN:
         self.saver = tf.train.Saver(max_to_keep=1)
 
     def train(self, config):
-        data_input = util.get_paths(config.dataset_input)
         data_real = util.get_paths(config.dataset_real)
+
+        if os.path.isdir(config.dataset_input):  
+            print("Input dataset is a directory")
+            self.is_input_annotations = False
+            data_input = util.get_paths(config.dataset_input)
+        else:
+            print("Input dataset is an annotations .txt file")  
+            self.is_input_annotations = True
+            data_input = util.load_data(config.dataset_input)
+
         np.random.shuffle(data_input)
         np.random.shuffle(data_real)
 
