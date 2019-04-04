@@ -12,27 +12,27 @@ class EvenGenerator(Generator):
             self.model = tf.keras.Sequential()
             self.model.add(tf.keras.layers.InputLayer(input_shape=(image_size, image_size, 3)))
 
-            self.model.add(tf.keras.layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'))
+            self.model.add(tf.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same'))
             self.model.add(tf.keras.layers.LeakyReLU(alpha=0.8))
             self.model.add(tf.keras.layers.BatchNormalization())
             
-            self.model.add(tf.keras.layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'))
+            self.model.add(tf.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same'))
             self.model.add(tf.keras.layers.LeakyReLU(alpha=0.8))
             self.model.add(tf.keras.layers.BatchNormalization())
             
-            self.model.add(tf.keras.layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'))
+            self.model.add(tf.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same'))
             self.model.add(tf.keras.layers.LeakyReLU(alpha=0.8))
             self.model.add(tf.keras.layers.BatchNormalization())
             
-            self.model.add(tf.keras.layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'))
+            self.model.add(tf.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same'))
             self.model.add(tf.keras.layers.LeakyReLU(alpha=0.8))
             self.model.add(tf.keras.layers.BatchNormalization())
             
-            self.model.add(tf.keras.layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'))
+            self.model.add(tf.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same'))
             self.model.add(tf.keras.layers.LeakyReLU(alpha=0.8))
             self.model.add(tf.keras.layers.BatchNormalization())
             
-            self.model.add(tf.keras.layers.Conv2D(16, (3, 3), strides=(1, 1), padding='same'))
+            self.model.add(tf.keras.layers.Conv2D(64, (3, 3), strides=(1, 1), padding='same'))
             self.model.add(tf.keras.layers.LeakyReLU(alpha=0.8))
             self.model.add(tf.keras.layers.BatchNormalization())
 
