@@ -4,9 +4,6 @@ import sys
 import os
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
-print("suhren_generator.py's __name__: {}".format(__name__))
-print("suhren_generator.py's __package__: {}".format(__package__))
-
 from util import util
 from .generator import Generator
 

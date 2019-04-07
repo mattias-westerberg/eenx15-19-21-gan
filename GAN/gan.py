@@ -58,9 +58,11 @@ class GAN:
         self.is_training = tf.placeholder(tf.bool, name='is_training')
         self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_real')
         self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_input')
-
-        self.G = self.generator(self.images_input, self.is_training)
+        # (batch_size, num_bboxes, [x0, y0, x1, y1, c])
+        self.bboxes = tf.placeholder(tf.int32, shape=(None, 5))
         
+        self.G = self.generator(self.images_input, self.is_training)
+
         self.D_real, self.D_real_logits = self.discriminator(self.images_real, is_training=self.is_training)
         self.D_fake, self.D_fake_logits = self.discriminator(self.G, reuse=True, is_training=self.is_training)
 
@@ -75,14 +77,40 @@ class GAN:
         self.d_loss_fake = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
                                                     labels=tf.zeros_like(self.D_fake)))
-        self.g_loss = tf.reduce_mean(
+        self.g_loss_image = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
                                                     labels=tf.ones_like(self.D_fake)))
+        
+        self.mses = []
 
+        def body1(i):
+            img_in = self.images_input[i]
+            img_out = self.G[i]
+            bb = self.bboxes[i]
+            img_in_cropped = tf.image.crop_to_bounding_box(img_in, bb[1], bb[0], bb[3] - bb[1], bb[2] - bb[0])
+            img_out_cropped = tf.image.crop_to_bounding_box(img_out, bb[1], bb[0], bb[3] - bb[1], bb[2] - bb[0])
+            self.mses.append(tf.losses.mean_squared_error(labels=img_in, predictions=img_out))
+            i = tf.add(i, 1)
+            return [i]
+
+        def g_loss_function():
+            # Number of images in batch
+            N = tf.shape(self.images_input)[0]
+            i = tf.constant(0)
+            condition1 = lambda i: tf.less(i, N)
+            self.mses = []
+            # Placeholder to store the total Mean Square Errors of each image's boundingboxes
+            # mse = tf.placegolder(tf.float32, shape=(None))
+            i = tf.while_loop(condition1, body1, [i])
+            return tf.reduce_mean(tf.stack(self.mses))
+
+        self.g_loss_bbox = g_loss_function()
+
+        self.g_loss = 0.25 * self.g_loss_image + 0.75 * self.g_loss_bbox
+        self.d_loss = self.d_loss_real + self.d_loss_fake
+        
         self.d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
-
-        self.d_loss = self.d_loss_real + self.d_loss_fake
 
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
@@ -91,7 +119,7 @@ class GAN:
         self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
         self.saver = tf.train.Saver(max_to_keep=1)
-
+    
     def train(self, config):
         data_real = util.get_paths(config.dataset_real)
 
@@ -99,10 +127,13 @@ class GAN:
             print("Input dataset is a directory")
             self.is_input_annotations = False
             data_input = util.get_paths(config.dataset_input)
+            dict_input = {path : None for path in data_input}
         else:
             print("Input dataset is an annotations .txt file")  
             self.is_input_annotations = True
-            data_input = util.load_data(config.dataset_input)
+            dict_input = util.load_data(config.dataset_input)
+            data_input = list(dict_input.keys())
+            dict_input = {key : val[0] for key, val in dict_input.items()}
 
         np.random.shuffle(data_input)
         np.random.shuffle(data_real)
@@ -148,24 +179,26 @@ class GAN:
                 batch_images_input = np.array(batch_input).astype(np.float32)
                 batch_images_real = np.array(batch_real).astype(np.float32)
                 
+                batch_bboxes = np.array([dict_input[key] for key in batch_files_input]).astype(np.int32)
+
                 #update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
-                                               feed_dict={self.images_real: batch_images_real, self.images_input: batch_images_input, self.is_training: True})
+                                               feed_dict={self.images_real : batch_images_real, self.images_input : batch_images_input, self.is_training: True})
                 self.writer.add_summary(summary_str, counter)
                 
                 #update G network
                 _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.images_input: batch_images_input, self.is_training: True})
+                                               feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : True})
                 self.writer.add_summary(summary_str, counter)
                 
                 #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
                 _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.images_input: batch_images_input, self.is_training: True})
+                                               feed_dict={self.images_input : batch_images_input, self.is_training: True})
                 self.writer.add_summary(summary_str, counter)
                 
-                errD_fake = self.d_loss_fake.eval({self.images_input: batch_images_input, self.is_training: False})
-                errD_real = self.d_loss_real.eval({self.images_real: batch_images_real, self.is_training: False})
-                errG = self.g_loss.eval({self.images_input: batch_images_input, self.is_training: False})
+                errD_fake = self.d_loss_fake.eval({self.images_input : batch_images_input, self.is_training : False})
+                errD_real = self.d_loss_real.eval({self.images_real : batch_images_real, self.is_training : False})
+                errG = self.g_loss.eval({self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : False})
                 
                 counter += 1
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(

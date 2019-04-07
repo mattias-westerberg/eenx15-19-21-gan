@@ -1,13 +1,31 @@
 import numpy as np
 import scipy.misc
 import os
-
-print("util.py's __name__: {}".format(__name__))
-print("util.py's __package__: {}".format(__package__))
+import re
 
 TRANSFORM_CROP = "crop"
 TRANSFORM_RESIZE = "resize"
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
+
+def load_data(file_name):
+    """
+    Return a dictionary with the form { image_path : [[x0 y0 x1 y1 c]] }
+    """
+    dir_name = os.path.dirname(file_name)
+    train_dict = dict()
+    train_imgs = []  # useful to keep an ordering of the imgs
+    with open(file_name, "r") as file:
+        for line in file:
+            info = re.split(",| ", line[:-1])  # the last character is '\n'
+            img_path = dir_name + "/" + info[0]
+            train_imgs.append(img_path)
+            bounding_boxes = []  # with the label
+            for i in range(1, len(info), 5):
+                bounding_boxes.append([int(value) for value in info[i:i + 5]])
+
+            train_dict[img_path] = bounding_boxes
+
+    return train_dict
 
 def is_pow2(x):
     return x & (x - 1) == 0
