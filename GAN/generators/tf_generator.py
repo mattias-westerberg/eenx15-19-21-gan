@@ -1,7 +1,11 @@
 import tensorflow as tf
 import math
 
-from .. import layers
+import sys
+import os
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+
+from util import layers
 from .generator import Generator
 
 class TFGenerator(Generator):

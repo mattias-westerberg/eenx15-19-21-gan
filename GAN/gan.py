@@ -7,8 +7,12 @@ import tensorflow as tf
 from util import util
 from generators.even_generator import EvenGenerator
 from generators.suhren_generator import SuhrenGenerator
-from generators.nordh_generator import NordhGenerator
+# from generators.nordh_generator import NordhGenerator
 from discriminators.SRGAN_discriminator import NordhDisctriminator
+# from discriminators.nordh_discriminator import NordhDisctriminator
+from discriminators.tf_discriminator import TFDisctriminator
+from generators.tf_generator import TFGenerator
+
 
 class GAN:
     """
@@ -44,13 +48,13 @@ class GAN:
 
         self.is_input_annotations = False
 
-        #self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
-        #self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
+        #self.generator = TFGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
+        self.discriminator = TFDisctriminator(df_dim, dfc_dim)
 
         self.generator = EvenGenerator(image_size)
-        self.discriminator = NordhDisctriminator(image_size)
+        #self.discriminator = NordhDisctriminator(image_size)
         print(self.generator.model.summary())
-        print(self.discriminator.model.summary())
+        #print(self.discriminator.model.summary())
 
         self.checkpoint_dir = checkpoint_dir
         self.build_model()
@@ -71,8 +75,15 @@ class GAN:
 
         self.d_real_sum = tf.summary.histogram("d_real", self.D_real)
         self.d_fake_sum = tf.summary.histogram("d_fake", self.D_fake)
-        self.G_input_sum = tf.summary.image("g_input", self.images_input)
-        self.G_output_sum = tf.summary.image("g_output", self.G)
+
+        str_input = "g_input/"
+        str_output = "g_output/"
+
+        with tf.name_scope(None):
+            with tf.name_scope(str_input):
+                self.G_input_sum = tf.summary.image("g_input_image", self.images_input)
+            with tf.name_scope(str_output):
+                self.G_output_sum = tf.summary.image("g_output_image", self.G)
 
         self.d_loss_real = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real_logits,
@@ -111,15 +122,17 @@ class GAN:
             [i, losses, bb_imgs_in, bb_imgs_out] = tf.while_loop(loop_cond, loop_body, [i, losses, bb_imgs_in, bb_imgs_out], shape_invariants=[i.get_shape(), tf.TensorShape([None]), tf.TensorShape([None, bb_size, bb_size, self.c_dim]), tf.TensorShape([None, bb_size, bb_size, self.c_dim])])
             # Adding a name scope ensures logical grouping of the layers in the graph.
             with tf.name_scope(None):
-                self.images_input_cropped = bb_imgs_in
-                self.images_output_cropped = bb_imgs_out
-                self.G_input_cropped_sum = tf.summary.image("g_input_cropped", self.images_input_cropped)
-                self.G_output_cropped_sum = tf.summary.image("g_output_cropped", self.images_output_cropped)
+                with tf.name_scope(str_input):
+                    self.images_input_cropped = bb_imgs_in
+                    self.G_input_cropped_sum = tf.summary.image("g_input_crop", self.images_input_cropped)
+                with tf.name_scope(str_output):
+                    self.images_output_cropped = bb_imgs_out
+                    self.G_output_cropped_sum = tf.summary.image("g_output_crop", self.images_output_cropped)
 
             return tf.reduce_mean(losses)
 
         self.use_bboxes = tf.placeholder(tf.bool, name="use_bboxes")
-        self.g_loss_bbox = 2.0 * tf.cond(self.use_bboxes, g_loss_function, lambda: 0.0)
+        self.g_loss_bbox = 10.0 * tf.cond(self.use_bboxes, g_loss_function, lambda: 0.0)
 
         self.g_loss = self.g_loss_image + self.g_loss_bbox
         self.d_loss = self.d_loss_real + self.d_loss_fake
