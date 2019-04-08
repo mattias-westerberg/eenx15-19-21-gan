@@ -37,9 +37,12 @@ class GAN:
         self.image_size = image_size
         self.sample_size = sample_size
         self.image_shape = [image_size, image_size, c_dim]
+        self.c_dim = c_dim
 
         self.sample_interval = sample_interval
         self.checkpoint_interval = checkpoint_interval
+
+        self.is_input_annotations = False
 
         #self.generator = generator_util.ImageGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
         #self.discriminator = discriminator_util.TestDisctriminator(df_dim, dfc_dim)
@@ -77,44 +80,58 @@ class GAN:
         self.d_loss_fake = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
                                                     labels=tf.zeros_like(self.D_fake)))
-        self.g_loss_image = tf.reduce_mean(
+        self.g_loss_image = 1.0 * tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
                                                     labels=tf.ones_like(self.D_fake)))
         
-        self.mses = []
-
-        def body1(i):
+        def loop_body(i, losses, bb_imgs_in, bb_imgs_out):
             img_in = self.images_input[i]
             img_out = self.G[i]
             bb = self.bboxes[i]
             img_in_cropped = tf.image.crop_to_bounding_box(img_in, bb[1], bb[0], bb[3] - bb[1], bb[2] - bb[0])
             img_out_cropped = tf.image.crop_to_bounding_box(img_out, bb[1], bb[0], bb[3] - bb[1], bb[2] - bb[0])
-            self.mses.append(tf.losses.mean_squared_error(labels=img_in, predictions=img_out))
+            loss = tf.losses.mean_squared_error(labels=img_in_cropped, predictions=img_out_cropped)
+            losses = tf.concat([losses, [loss]], 0)
+            size = tf.shape(bb_imgs_in)[1]
+            img_in_cropped_resized = tf.image.resize(img_in_cropped, size=[size, size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False, preserve_aspect_ratio=False)
+            img_out_cropped_resized = tf.image.resize(img_out_cropped, size=[size, size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False, preserve_aspect_ratio=False)
+            bb_imgs_in = tf.concat([bb_imgs_in, [img_in_cropped_resized]], 0)
+            bb_imgs_out = tf.concat([bb_imgs_out, [img_out_cropped_resized]], 0)
             i = tf.add(i, 1)
-            return [i]
+            return [i, losses, bb_imgs_in, bb_imgs_out]
 
         def g_loss_function():
-            # Number of images in batch
-            N = tf.shape(self.images_input)[0]
+            # https://stackoverflow.com/questions/41233462/tensorflow-while-loop-dealing-with-lists
+            losses = tf.Variable([])
+            bb_size = 64
+            bb_imgs_in = tf.zeros([0, bb_size, bb_size, self.c_dim])
+            bb_imgs_out = tf.zeros([0, bb_size, bb_size, self.c_dim])
             i = tf.constant(0)
-            condition1 = lambda i: tf.less(i, N)
-            self.mses = []
-            # Placeholder to store the total Mean Square Errors of each image's boundingboxes
-            # mse = tf.placegolder(tf.float32, shape=(None))
-            i = tf.while_loop(condition1, body1, [i])
-            return tf.reduce_mean(tf.stack(self.mses))
+            loop_cond = lambda i, losses, bb_imgs_in, bb_imgs_out: tf.less(i, self.batch_size)
+            [i, losses, bb_imgs_in, bb_imgs_out] = tf.while_loop(loop_cond, loop_body, [i, losses, bb_imgs_in, bb_imgs_out], shape_invariants=[i.get_shape(), tf.TensorShape([None]), tf.TensorShape([None, bb_size, bb_size, self.c_dim]), tf.TensorShape([None, bb_size, bb_size, self.c_dim])])
+            # Adding a name scope ensures logical grouping of the layers in the graph.
+            with tf.name_scope(None):
+                self.images_input_cropped = bb_imgs_in
+                self.images_output_cropped = bb_imgs_out
+                self.G_input_cropped_sum = tf.summary.image("g_input_cropped", self.images_input_cropped)
+                self.G_output_cropped_sum = tf.summary.image("g_output_cropped", self.images_output_cropped)
 
-        self.g_loss_bbox = g_loss_function()
+            return tf.reduce_mean(losses)
 
-        self.g_loss = 0.25 * self.g_loss_image + 0.75 * self.g_loss_bbox
+        self.use_bboxes = tf.placeholder(tf.bool, name="use_bboxes")
+        self.g_loss_bbox = 2.0 * tf.cond(self.use_bboxes, g_loss_function, lambda: 0.0)
+
+        self.g_loss = self.g_loss_image + self.g_loss_bbox
         self.d_loss = self.d_loss_real + self.d_loss_fake
         
+        self.g_loss_bbox_sum = tf.summary.scalar("g_loss_bbox", self.g_loss_bbox)
+        self.g_loss_image_sum = tf.summary.scalar("g_loss_image", self.g_loss_image)
+        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
+
         self.d_loss_real_sum = tf.summary.scalar("d_loss_real", self.d_loss_real)
         self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
-
-        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
-
+        
         self.d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
         self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
@@ -127,13 +144,14 @@ class GAN:
             print("Input dataset is a directory")
             self.is_input_annotations = False
             data_input = util.get_paths(config.dataset_input)
-            dict_input = {path : None for path in data_input}
+            dict_input = {path : [0]*5 for path in data_input}
         else:
             print("Input dataset is an annotations .txt file")  
             self.is_input_annotations = True
             dict_input = util.load_data(config.dataset_input)
             data_input = list(dict_input.keys())
             dict_input = {key : val[0] for key, val in dict_input.items()}
+            dict_input = util.resize_bounding_boxes(dict_input, self.image_size)
 
         np.random.shuffle(data_input)
         np.random.shuffle(data_real)
@@ -148,8 +166,26 @@ class GAN:
         except:
             tf.initialize_all_variables().run()
         
-        self.g_sum = tf.summary.merge([self.d_fake_sum, self.G_input_sum, self.G_output_sum, self.d_loss_fake_sum, self.g_loss_sum])
-        self.d_sum = tf.summary.merge([self.d_real_sum, self.d_loss_real_sum, self.d_loss_sum])
+        self.g_sum = tf.summary.merge([
+            self.d_fake_sum,
+            self.G_input_sum,
+            self.G_output_sum,
+            self.d_loss_fake_sum,
+            self.g_loss_sum,
+            self.g_loss_image_sum])
+
+        if (self.is_input_annotations):
+            self.g_sum = tf.summary.merge([
+            self.g_sum,
+            self.g_loss_bbox_sum,
+            self.G_input_cropped_sum,
+            self.G_output_cropped_sum])
+
+        self.d_sum = tf.summary.merge([
+            self.d_real_sum,
+            self.d_loss_real_sum,
+            self.d_loss_sum])
+
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
         
         sample_files_input = data_input[0:self.sample_size]
@@ -160,6 +196,8 @@ class GAN:
         sample_real = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_real]
         sample_images_real = np.array(sample_real).astype(np.float32)
         
+        sample_bboxes = np.array([dict_input[key] for key in sample_files_input]).astype(np.int32)
+
         counter = 1
         start_time = time.time()
         
@@ -188,17 +226,17 @@ class GAN:
                 
                 #update G network
                 _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : True})
+                                               feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : True, self.use_bboxes : self.is_input_annotations})
                 self.writer.add_summary(summary_str, counter)
                 
                 #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
                 _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.images_input : batch_images_input, self.is_training: True})
+                                               feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training: True, self.use_bboxes : self.is_input_annotations})
                 self.writer.add_summary(summary_str, counter)
                 
                 errD_fake = self.d_loss_fake.eval({self.images_input : batch_images_input, self.is_training : False})
                 errD_real = self.d_loss_real.eval({self.images_real : batch_images_real, self.is_training : False})
-                errG = self.g_loss.eval({self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : False})
+                errG = self.g_loss.eval({self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : False, self.use_bboxes : self.is_input_annotations})
                 
                 counter += 1
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
@@ -206,7 +244,7 @@ class GAN:
                 
                 if np.mod(counter, self.sample_interval) == 1:
                     samples, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
-                                                            feed_dict={self.images_input: sample_images_input, self.images_real: sample_images_real, self.is_training: False})
+                                                            feed_dict={self.images_input : sample_images_input, self.bboxes : sample_bboxes, self.images_real : sample_images_real, self.is_training : False, self.use_bboxes : self.is_input_annotations})
                     util.save_images(samples, [8,8], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
                     

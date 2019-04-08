@@ -30,6 +30,21 @@ def load_data(file_name):
 def is_pow2(x):
     return x & (x - 1) == 0
 
+def resize_bounding_boxes(bounding_boxes, new_size):
+    res = {}
+    for path, val in bounding_boxes.items():
+        image = imread(path)
+        xr = new_size / image.shape[0]
+        yr = new_size / image.shape[1]
+        x0 = xr * val[0]
+        y0 = yr * val[1]
+        x1 = xr * val[2]
+        y1 = yr * val[3]
+        c = val[4]
+        res[path] = [x0, y0, x1, y1, c]
+
+    return res
+
 def get_paths(directory):
     """
     Produces a list of supported filetypes from the specified directory.
