@@ -8,7 +8,7 @@ from util import util
 from generators.even_generator import EvenGenerator
 from generators.suhren_generator import SuhrenGenerator
 from generators.nordh_generator import NordhGenerator
-from discriminators.nordh_discriminator import NordhDisctriminator
+from discriminators.SRGAN_discriminator import NordhDisctriminator
 
 class GAN:
     """
@@ -93,8 +93,8 @@ class GAN:
             loss = tf.losses.mean_squared_error(labels=img_in_cropped, predictions=img_out_cropped)
             losses = tf.concat([losses, [loss]], 0)
             size = tf.shape(bb_imgs_in)[1]
-            img_in_cropped_resized = tf.image.resize(img_in_cropped, size=[size, size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False, preserve_aspect_ratio=False)
-            img_out_cropped_resized = tf.image.resize(img_out_cropped, size=[size, size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False, preserve_aspect_ratio=False)
+            img_in_cropped_resized = tf.image.resize_images(img_in_cropped, size=[size, size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False)
+            img_out_cropped_resized = tf.image.resize_images(img_out_cropped, size=[size, size], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR, align_corners=False)
             bb_imgs_in = tf.concat([bb_imgs_in, [img_in_cropped_resized]], 0)
             bb_imgs_out = tf.concat([bb_imgs_out, [img_out_cropped_resized]], 0)
             i = tf.add(i, 1)
