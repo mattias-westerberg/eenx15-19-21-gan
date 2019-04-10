@@ -14,7 +14,6 @@ from discriminators.nordh_discriminator import NordhDisctriminator
 from discriminators.tf_discriminator import TFDisctriminator
 from generators.tf_generator import TFGenerator
 
-
 class GAN:
     """
     PARAMETERS
@@ -32,7 +31,7 @@ class GAN:
         checkpoint_dir:   where to store the TensorFlow checkpoints
     """
     def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=16,
-                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, checkpoint_dir=None):
+                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, checkpoint_dir=None, bbox_weight=1.0, image_weight=1.0, model_name="GAN"):
         # image_size must be power of 2 and 8+
         assert(util.is_pow2(image_size) and image_size >= 8)
 
@@ -49,18 +48,21 @@ class GAN:
 
         self.is_input_annotations = False
 
-        #self.generator = TFGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
-        #self.discriminator = TFDisctriminator(df_dim, dfc_dim)
+        self.bbox_weight = bbox_weight
+        self.image_weight = image_weight
 
         self.generator = EvenGenerator(image_size)
         self.discriminator = TestDisctriminator(image_size)
-        #print(self.generator.model.summary())
-        #print(self.discriminator.model.summary())
 
-        self.checkpoint_dir = checkpoint_dir
         self.build_model()
 
-        self.model_name="DCGAN.model"
+        self.model_name=model_name
+        self.checkpoint_dir =  os.path.join(checkpoint_dir, model_name)
+        self.checkpoint_dir_g = os.path.join(self.checkpoint_dir, self.generator.name())
+        self.checkpoint_path_g = os.path.join(self.checkpoint_dir_g, self.generator.name())
+        self.checkpoint_dir_d = os.path.join(self.checkpoint_dir, self.discriminator.name())
+        self.checkpoint_path_d = os.path.join(self.checkpoint_dir_d, self.discriminator.name())
+
 
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
@@ -92,7 +94,7 @@ class GAN:
         self.d_loss_fake = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
                                                     labels=tf.zeros_like(self.D_fake)))
-        self.g_loss_image = 1.0 * tf.reduce_mean(
+        self.g_loss_image = self.image_weight * tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
                                                     labels=tf.ones_like(self.D_fake)))
         
@@ -133,7 +135,7 @@ class GAN:
             return tf.reduce_mean(losses)
 
         self.use_bboxes = tf.placeholder(tf.bool, name="use_bboxes")
-        self.g_loss_bbox = 10.0 * tf.cond(self.use_bboxes, g_loss_function, lambda: 0.0)
+        self.g_loss_bbox = self.bbox_weight * tf.cond(self.use_bboxes, g_loss_function, lambda: 0.0)
 
         self.g_loss = self.g_loss_image + self.g_loss_bbox
         self.d_loss = self.d_loss_real + self.d_loss_fake
@@ -149,7 +151,8 @@ class GAN:
         self.d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
         self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
-        self.saver = tf.train.Saver(max_to_keep=1)
+        self.saver_generator = tf.train.Saver(max_to_keep=1, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="generator"))
+        self.saver_discriminator = tf.train.Saver(max_to_keep=1, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="discriminator"))
     
     def train(self, config):
         data_real = util.get_paths(config.dataset_real)
@@ -215,10 +218,7 @@ class GAN:
         counter = 1
         start_time = time.time()
         
-        if self.load(self.checkpoint_dir):
-            print(""" An existing model was found - delete the directory or specify a new one with --checkpoint_dir """)
-        else:
-            print(""" No model found - initializing a new one""")
+        self.load_checkpoints()
         
         for epoch in range(config.epoch):
             batch_idxs = min(len(data_input), config.train_size) // self.batch_size
@@ -266,20 +266,34 @@ class GAN:
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
                     
                 if np.mod(counter, self.checkpoint_interval) == 2:
-                    self.save(config.checkpoint_dir, counter)
+                    self.save(counter)
 
-    def save(self, checkpoint_dir, step):
+    def save(self, step):
         """Save the current state of the model to the checkpoint directory"""
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
-        self.saver.save(self.sess, os.path.join(checkpoint_dir, self.model_name), global_step=step)
+        if not os.path.exists(self.checkpoint_dir_g):
+            os.makedirs(self.checkpoint_dir_g)
+        self.saver_generator.save(self.sess, self.checkpoint_path_g, global_step=step)
+        if not os.path.exists(self.checkpoint_dir_d):
+            os.makedirs(self.checkpoint_dir_d)
+        self.saver_discriminator.save(self.sess, self.checkpoint_path_d, global_step=step)
 
-    def load(self, checkpoint_dir):
+    def load_checkpoints(self):
         """Load a model from the checkpoint directory if it exists"""
-        print(" [*] Reading checkpoints...")
-        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            self.saver.restore(self.sess, ckpt.model_checkpoint_path)
-            return True
+
+        print("[*] Reading generator checkpoints for model %s..." % self.generator.name())
+        ckpt_g = tf.train.get_checkpoint_state(self.checkpoint_dir_g)
+
+        if ckpt_g and ckpt_g.model_checkpoint_path:
+            self.saver_generator.restore(self.sess, ckpt_g.model_checkpoint_path)
+            print("An existing generator model for %s was found - delete the directory or specify a new one with --checkpoint_dir" % self.generator.name())
         else:
-            return False
+            print("No generator model for %s found - initializing a new one" % self.generator.name())
+
+        print("[*] Reading discriminator checkpoints for model %s..." % self.discriminator.name())
+        ckpt_d = tf.train.get_checkpoint_state(self.checkpoint_dir_d)
+
+        if ckpt_d and ckpt_d.model_checkpoint_path:
+            self.saver_discriminator.restore(self.sess, ckpt_d.model_checkpoint_path)
+            print("An existing discriminator model for %s was found - delete the directory or specify a new one with --checkpoint_dir" % self.discriminator.name())
+        else:
+            print("No discriminator model for %s found - initializing a new one" % self.discriminator.name())
