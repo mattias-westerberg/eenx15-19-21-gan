@@ -6,10 +6,11 @@ import tensorflow as tf
 
 from util import util
 from generators.even_generator import EvenGenerator
+from discriminators.test_discriminator import TestDisctriminator
 from generators.suhren_generator import SuhrenGenerator
 # from generators.nordh_generator import NordhGenerator
-from discriminators.SRGAN_discriminator import NordhDisctriminator
-# from discriminators.nordh_discriminator import NordhDisctriminator
+# from discriminators.SRGAN_discriminator import NordhDisctriminator
+from discriminators.nordh_discriminator import NordhDisctriminator
 from discriminators.tf_discriminator import TFDisctriminator
 from generators.tf_generator import TFGenerator
 
@@ -30,7 +31,7 @@ class GAN:
         c_dim:   number of image cannels (gray=1, RGB=3)
         checkpoint_dir:   where to store the TensorFlow checkpoints
     """
-    def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=64,
+    def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=16,
                 gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, checkpoint_dir=None):
         # image_size must be power of 2 and 8+
         assert(util.is_pow2(image_size) and image_size >= 8)
@@ -49,11 +50,11 @@ class GAN:
         self.is_input_annotations = False
 
         #self.generator = TFGenerator(gf0_dim, gf1_dim, gfc_dim, image_size, batch_size)
-        self.discriminator = TFDisctriminator(df_dim, dfc_dim)
+        #self.discriminator = TFDisctriminator(df_dim, dfc_dim)
 
         self.generator = EvenGenerator(image_size)
-        #self.discriminator = NordhDisctriminator(image_size)
-        print(self.generator.model.summary())
+        self.discriminator = TestDisctriminator(image_size)
+        #print(self.generator.model.summary())
         #print(self.discriminator.model.summary())
 
         self.checkpoint_dir = checkpoint_dir
@@ -231,25 +232,28 @@ class GAN:
                 batch_images_real = np.array(batch_real).astype(np.float32)
                 
                 batch_bboxes = np.array([dict_input[key] for key in batch_files_input]).astype(np.int32)
-
-                #update D network
-                _, summary_str = self.sess.run([d_optim, self.d_sum],
-                                               feed_dict={self.images_real : batch_images_real, self.images_input : batch_images_input, self.is_training: True})
-                self.writer.add_summary(summary_str, counter)
                 
-                #update G network
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : True, self.use_bboxes : self.is_input_annotations})
-                self.writer.add_summary(summary_str, counter)
-                
-                #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                               feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training: True, self.use_bboxes : self.is_input_annotations})
-                self.writer.add_summary(summary_str, counter)
-                
-                errD_fake = self.d_loss_fake.eval({self.images_input : batch_images_input, self.is_training : False})
-                errD_real = self.d_loss_real.eval({self.images_real : batch_images_real, self.is_training : False})
-                errG = self.g_loss.eval({self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : False, self.use_bboxes : self.is_input_annotations})
+                # https://github.com/tensorflow/tensorflow/issues/16455
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    #update D network
+                    _, summary_str = self.sess.run([d_optim, self.d_sum],
+                                                feed_dict={self.images_real : batch_images_real, self.images_input : batch_images_input, self.is_training: True})
+                    self.writer.add_summary(summary_str, counter)
+                    
+                    #update G network
+                    _, summary_str = self.sess.run([g_optim, self.g_sum],
+                                                feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : True, self.use_bboxes : self.is_input_annotations})
+                    self.writer.add_summary(summary_str, counter)
+                    
+                    #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
+                    _, summary_str = self.sess.run([g_optim, self.g_sum],
+                                                feed_dict={self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training: True, self.use_bboxes : self.is_input_annotations})
+                    self.writer.add_summary(summary_str, counter)
+                    
+                    errD_fake = self.d_loss_fake.eval({self.images_input : batch_images_input, self.is_training : False})
+                    errD_real = self.d_loss_real.eval({self.images_real : batch_images_real, self.is_training : False})
+                    errG = self.g_loss.eval({self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : False, self.use_bboxes : self.is_input_annotations})
                 
                 counter += 1
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
@@ -258,7 +262,7 @@ class GAN:
                 if np.mod(counter, self.sample_interval) == 1:
                     samples, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
                                                             feed_dict={self.images_input : sample_images_input, self.bboxes : sample_bboxes, self.images_real : sample_images_real, self.is_training : False, self.use_bboxes : self.is_input_annotations})
-                    util.save_images(samples, [8,8], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
+                    util.save_images(samples, [4,4], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
                     
                 if np.mod(counter, self.checkpoint_interval) == 2:
