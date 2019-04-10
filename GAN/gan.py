@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 import tensorflow as tf
+import math
 
 from util import util
 from generators.even_generator import EvenGenerator
@@ -28,10 +29,9 @@ class GAN:
         gfc_dim:   dimension of generator units for fully-connected layer
         dfc_gim:   dimension of discriminator units for fully-connected layer
         c_dim:   number of image cannels (gray=1, RGB=3)
-        checkpoint_dir:   where to store the TensorFlow checkpoints
     """
     def __init__(self, sess, image_size=64, input_transform=util.TRANSFORM_RESIZE, batch_size=64, sample_size=16,
-                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, checkpoint_dir=None, bbox_weight=1.0, image_weight=1.0, model_name="GAN"):
+                gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, output_dir=None, bbox_weight=1.0, image_weight=1.0, model_name="GAN"):
         # image_size must be power of 2 and 8+
         assert(util.is_pow2(image_size) and image_size >= 8)
 
@@ -57,18 +57,22 @@ class GAN:
         self.build_model()
 
         self.model_name=model_name
-        self.checkpoint_dir =  os.path.join(checkpoint_dir, model_name)
+        self.output_dir = output_dir
+        self.log_dir =  os.path.join(output_dir, model_name, "logs")
+        self.sample_dir = os.path.join(output_dir, model_name, "samples")
+        self.checkpoint_dir =  os.path.join(output_dir, model_name, "checkpoints")
         self.checkpoint_dir_g = os.path.join(self.checkpoint_dir, self.generator.name())
         self.checkpoint_path_g = os.path.join(self.checkpoint_dir_g, self.generator.name())
         self.checkpoint_dir_d = os.path.join(self.checkpoint_dir, self.discriminator.name())
         self.checkpoint_path_d = os.path.join(self.checkpoint_dir_d, self.discriminator.name())
+
+        self.sample_width = (int)(math.sqrt(sample_size))
 
 
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
         self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_real')
         self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_input')
-        # (batch_size, num_bboxes, [x0, y0, x1, y1, c])
         self.bboxes = tf.placeholder(tf.int32, shape=(None, 5))
         
         self.G = self.generator(self.images_input, self.is_training)
@@ -203,7 +207,7 @@ class GAN:
             self.d_loss_real_sum,
             self.d_loss_sum])
 
-        self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
+        self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
         
         sample_files_input = data_input[0:self.sample_size]
         sample_input = [util.get_image(sample_file, self.image_size, input_transform=self.input_transform) for sample_file in sample_files_input]
@@ -260,10 +264,18 @@ class GAN:
                         epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
                 
                 if np.mod(counter, self.sample_interval) == 1:
-                    samples, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
-                                                            feed_dict={self.images_input : sample_images_input, self.bboxes : sample_bboxes, self.images_real : sample_images_real, self.is_training : False, self.use_bboxes : self.is_input_annotations})
-                    util.save_images(samples, [4,4], './samples/train_{:02d}-{:04d}.png'.format(epoch, idx))
-                    print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
+                    samples = np.zeros((self.sample_size, self.image_size, self.image_size, self.c_dim))
+                    g_losses = 0.0
+                    d_losses = 0.0
+                    for i in range(self.sample_size):
+                        sample, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
+                                                            feed_dict={self.images_input : [sample_images_input[i]], self.bboxes : [sample_bboxes[i]], self.images_real : [sample_images_real[i]], self.is_training : False, self.use_bboxes : self.is_input_annotations})
+                        d_losses += d_loss
+                        g_losses += g_losses
+                        samples[i] = sample
+                    
+                    util.save_images(samples, [self.sample_width, self.sample_width], os.path.join(self.sample_dir, "train_{:02d}-{:04d}.png".format(epoch, idx)))
+                    print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss / self.batch_size, g_loss / self.batch_size))
                     
                 if np.mod(counter, self.checkpoint_interval) == 2:
                     self.save(counter)
