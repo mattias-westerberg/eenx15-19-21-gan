@@ -10,9 +10,10 @@ class batch_norm(object):
             self.momentum = momentum
             self.name = name
 
-    def __call__(self, x, train):
-        return tf.contrib.layers.batch_norm(x, decay=self.momentum, updates_collections=None, epsilon=self.epsilon,
-                                            center=True, scale=True, is_training=train, scope=self.name)   
+    def __call__(self, x, training):
+        with tf.variable_scope(self.name):
+            return tf.layers.batch_normalization(x, momentum=self.momentum, epsilon=self.epsilon,
+                                                center=True, scale=True, training=training)   
 
 #CONVOLUTION FUNCTION
 def conv2d(input_, output_dim, k, s, stddev=0.02, name="conv2d"):

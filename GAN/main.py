@@ -2,6 +2,10 @@
 import tensorflow as tf
 from gan import GAN
 
+# Disable some TF warnings
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 # DEFINE THE FLAGS FOR RUNNING SCRIPT FROM THE TERMINAL
 # (ARG1, ARG2, ARG3) = (NAME OF THE FLAG, DEFAULT VALUE, DESCRIPTION)
 flags = tf.app.flags

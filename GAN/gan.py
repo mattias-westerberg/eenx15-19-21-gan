@@ -34,6 +34,7 @@ class GAN:
                 gf0_dim=64, gf1_dim=64, df_dim=64, gfc_dim=1024, dfc_dim=1024, c_dim=3, sample_interval=16, checkpoint_interval=32, output_dir=None, bbox_weight=1.0, image_weight=1.0, model_name="GAN"):
         # image_size must be power of 2 and 8+
         assert(util.is_pow2(image_size) and image_size >= 8)
+        assert(util.is_pow2(sample_size) and sample_size >= 1)
 
         self.sess = sess
         self.input_transform = input_transform
