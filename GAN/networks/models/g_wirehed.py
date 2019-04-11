@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from .generator import Generator
+from .layers import *
 
 class WirehedGenerator(Generator):
     def __init__(self, image_size):

@@ -1,12 +1,7 @@
 import tensorflow as tf
 
 from .discriminator import Disctriminator
-
-import sys
-import os
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
-from util.layers import *
+from .layers import *
 
 class TestDisctriminator(Disctriminator):
     def __init__(self, image_size):

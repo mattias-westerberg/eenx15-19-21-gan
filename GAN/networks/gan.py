@@ -1,19 +1,13 @@
 from __future__ import division
 import os
 import time
+import math
 import numpy as np
 import tensorflow as tf
-import math
 
-from util import util
-from generators.even_generator import EvenGenerator
-from discriminators.test_discriminator import TestDisctriminator
-from generators.suhren_generator import SuhrenGenerator
-# from generators.nordh_generator import NordhGenerator
-# from discriminators.SRGAN_discriminator import NordhDisctriminator
-from discriminators.nordh_discriminator import NordhDisctriminator
-from discriminators.tf_discriminator import TFDisctriminator
-from generators.tf_generator import TFGenerator
+from .models.g_even import EvenGenerator
+from .models.d_test import TestDisctriminator
+from . import util
 
 class GAN:
     """
@@ -68,7 +62,6 @@ class GAN:
         self.checkpoint_path_d = os.path.join(self.checkpoint_dir_d, self.discriminator.name())
 
         self.sample_width = (int)(math.sqrt(sample_size))
-
 
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')

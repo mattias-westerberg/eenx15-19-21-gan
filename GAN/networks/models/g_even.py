@@ -1,12 +1,7 @@
 import tensorflow as tf
 
 from .generator import Generator
-
-import sys
-import os
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
-from util.layers import *
+from .layers import *
 
 class EvenGenerator(Generator):
     def __init__(self, image_size):

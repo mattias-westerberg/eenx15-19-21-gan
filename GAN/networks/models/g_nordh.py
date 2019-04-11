@@ -2,6 +2,7 @@ import tensorflow as tf
 import math
 
 from .generator import Generator
+from .layers import *
 
 class NordhGenerator(Generator):
     def __init__(self, image_size):

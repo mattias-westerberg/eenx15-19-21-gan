@@ -1,11 +1,19 @@
 # https://mlnotebook.github.io/post/GAN5/
+import os
 import tensorflow as tf
-from gan import GAN
+
+from networks.gan import GAN
 
 # Disable some TF warnings
-import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.ERROR)
+
+# Options to limit GPU usage
+# Fixed the problem: tensorflow/stream_executor/cuda/cuda_dnn.cc:334] Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 1.0
+config.gpu_options.allow_growth = True 
+config.intra_op_parallelism_threads = 8
 
 # DEFINE THE FLAGS FOR RUNNING SCRIPT FROM THE TERMINAL
 # (ARG1, ARG2, ARG3) = (NAME OF THE FLAG, DEFAULT VALUE, DESCRIPTION)
@@ -26,13 +34,6 @@ flags.DEFINE_integer("checkpoint_interval", 10, "Number of epochs between checkp
 flags.DEFINE_float("bbox_weight", 1.0, "Weight for the bbox content loss [1.0]")
 flags.DEFINE_float("image_weight", 1.0, "Weight for the image content loss [1.0]")
 FLAGS = flags.FLAGS
-
-# Options to limit GPU usage
-# Fixed the problem: tensorflow/stream_executor/cuda/cuda_dnn.cc:334] Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
-config.gpu_options.allow_growth = True 
-config.intra_op_parallelism_threads = 8
 
 with tf.Session(config=config) as sess:
     dcgan = GAN(sess, model_name=FLAGS.model_name, image_size=FLAGS.image_size, batch_size=FLAGS.batch_size,

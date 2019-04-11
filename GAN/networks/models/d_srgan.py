@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from .discriminator import Disctriminator
-
+from .layers import *
 
 class NordhDisctriminator(Disctriminator):
     def __init__(self, image_size):
