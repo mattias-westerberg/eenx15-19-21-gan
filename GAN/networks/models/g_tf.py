@@ -1,12 +1,8 @@
 import tensorflow as tf
 import math
 
-import sys
-import os
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
-from util import layers
 from .generator import Generator
+from .layers import *
 
 class TFGenerator(Generator):
     def __init__(self, gf0_dim, gf1_dim, gfc_dim, image_size, batch_size):

@@ -1,11 +1,8 @@
 import tensorflow as tf
 import math
-import sys
-import os
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
-from util import util
 from .generator import Generator
+from .layers import *
 
 class SuhrenGenerator(Generator):
     def __init__(self, image_size, mid_size):

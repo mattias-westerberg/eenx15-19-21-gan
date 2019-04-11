@@ -1,11 +1,7 @@
 import tensorflow as tf
 
-import sys
-import os
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
-from util import layers
 from .discriminator import Disctriminator
+from .layers import *
 
 class TFDisctriminator(Disctriminator):
     def __init__(self, df_dim, dfc_dim):
