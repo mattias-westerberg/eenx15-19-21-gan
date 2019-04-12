@@ -2,11 +2,11 @@
 import os
 import tensorflow as tf
 
-from networks.gan_even import EvenGAN
-from networks.gan_cycle import CycleGAN
-from networks.gan_auto_encoder import AutoEncoderGAN
-from networks.gan_feed_forward import FeedForwardGAN
-from networks.gan_vgg19 import VGG19GAN
+from networks.gan import GAN
+
+from networks.models.generator_FeedForward import FeedForwardGenerator
+from networks.models.generator_even import EvenGenerator
+from networks.models.discriminator_test import TestDisctriminator
 
 # Disable some TF warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -37,11 +37,15 @@ flags.DEFINE_integer("sample_size", 16, "Number of samples to generate [16]")
 flags.DEFINE_integer("checkpoint_interval", 10, "Number of epochs between checkpoints [32]")
 FLAGS = flags.FLAGS
 
-gan = EvenGAN() 
-#gan = CycleGAN()
-#gan = AutoEncoderGAN()
-#gan = FeedForwardGAN()
-#gan = VGG19GAN()
+#gan_even = GAN("EvenGAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+
+#gan_cycle = GAN("CycleGAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+                
+#gan_auto_encoder = GAN("AutoEncoderGAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+
+gan_ff = GAN("FeedForwardGAN", FeedForwardGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+
+#gan_vgg19 = GAN("VGG19GAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
 
 with tf.Session(config=config) as sess:
-    gan.train(sess, FLAGS)
+    gan_ff.train(sess, FLAGS)

@@ -1,6 +1,4 @@
 from __future__ import division
-from abc import ABC, abstractmethod
-
 import os
 import time
 import math
@@ -9,7 +7,8 @@ import tensorflow as tf
 
 from . import util
 
-class GAN(ABC):
+
+class GAN():
     """
     PARAMETERS
         sess:   the TensorFlow session to run in
@@ -17,7 +16,6 @@ class GAN(ABC):
         c_dim:   number of image cannels (gray=1, RGB=3)
     """
     def __init__(self, model_name, generator, discriminator, image_size=64, c_dim=3, output_dir=None, bbox_weight=1.0, image_weight=1.0):
-        super(GAN, self).__init__()
 
         assert(util.is_pow2(image_size) and image_size >= 8)
 
