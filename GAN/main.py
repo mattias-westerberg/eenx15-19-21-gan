@@ -38,14 +38,11 @@ flags.DEFINE_integer("checkpoint_interval", 10, "Number of epochs between checkp
 FLAGS = flags.FLAGS
 
 #gan_even = GAN("EvenGAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
-
 #gan_cycle = GAN("CycleGAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
-                
 #gan_auto_encoder = GAN("AutoEncoderGAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+#gan_vgg19 = GAN("VGG19GAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
 
 gan_ff = GAN("FeedForwardGAN", FeedForwardGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
-
-#gan_vgg19 = GAN("VGG19GAN", EvenGenerator(256), TestDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
 
 with tf.Session(config=config) as sess:
     gan_ff.train(sess, FLAGS)

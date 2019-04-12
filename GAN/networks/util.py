@@ -117,27 +117,27 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
     return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w], [resize_w, resize_w])
 
 #CREATE IMAGE ARRAY FUNCTION
-def merge(images, size):
+def merge(images, shape):
     """ Takes a set of 'images' and creates an array from them.
 
     INPUT
         images:     the set of input images
-        size:       [height, width] of the array
+        shape:       [height, width] of the array
 
     RETURNS
         - image array as a single image
     """ 
     h, w = images.shape[1], images.shape[2]
-    img = np.zeros((int(h * size[0]), int(w * size[1]), 3))
+    img = np.zeros((int(h * shape[0]), int(w * shape[1]), 3))
     for idx, image in enumerate(images):
-        i = idx % size[1]
-        j = idx // size[1]
+        i = idx % shape[1]
+        j = idx // shape[1]
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
     return img
     
 #ARRAY TO IMAGE FUNCTION
-def imsave(images, size, path):
+def imsave(images, paths):
     """ Takes a set of `images` and calls the merge function. Converts
     the array to image data.
 
@@ -149,18 +149,31 @@ def imsave(images, size, path):
     RETURNS
         - an image array
     """
-    img = merge(images, size)
-    directory = os.path.dirname(path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    return scipy.misc.imsave(path, (255 * img).astype(np.uint8))
+    
+    for img, pth in zip(images, paths):
+        directory = os.path.dirname(pth)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        scipy.misc.imsave(pth, img)
 
 #SAVE IMAGE FUNCTION
-def save_images(images, size, image_path):
+def save_images(images, paths):
     """ takes an image and saves it to disk. Redistributes
     intensity values [-1 1] from [0 255]
     """
-    return imsave(inverse_transform(images), size, image_path)
+    imgs = inverse_transform(images)
+    imgs = (255 * imgs).astype(np.uint8)
+    return imsave(imgs, paths)
+
+#SAVE IMAGE FUNCTION
+def save_mosaic(images, shape, path):
+    """ takes an image and saves it to disk. Redistributes
+    intensity values [-1 1] from [0 255]
+    """
+    imgs = inverse_transform(images)
+    imgs = (255 * imgs).astype(np.uint8)
+    img = merge(imgs, shape)
+    return imsave(img, [path])
 
 #INVERSE TRANSFORMATION OF INTENSITITES
 def inverse_transform(images):

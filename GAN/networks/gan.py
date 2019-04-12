@@ -251,11 +251,46 @@ class GAN():
                         g_losses += g_losses
                         samples[i] = sample
                     
-                    util.save_images(samples, [sample_width, sample_width], os.path.join(self.sample_dir, "train_{:02d}-{:04d}.png".format(epoch, idx)))
+                    util.save_mosaic(samples, [sample_width, sample_width], os.path.join(self.sample_dir, "train_{:02d}-{:04d}.png".format(epoch, idx)))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss / config.batch_size, g_loss / config.batch_size))
                     
                 if np.mod(counter, config.checkpoint_interval) == 2:
                     self.save(counter)
+    
+    def inference(self, sess, dir_in, dir_out, config):
+        assert(os.path.isdir(dir_in))
+
+        if (not os.path.exists(dir_out)):
+            os.makedirs(dir_out)
+
+        self.sess = sess
+
+        print("Input dataset is a directory")
+        paths_in = util.get_paths(dir_in)
+        n = len(paths_in)
+        assert(n > 0)
+
+        paths_out = [dir_out + "/" + os.path.basename(pth) for pth in paths_in]
+
+        dict_in = {pth : [0]*5 for pth in paths_in}
+
+        try:
+            tf.global_variables_initializer().run()
+        except:
+            tf.initialize_all_variables().run()
+        
+        imgs_in = [util.get_image(path, config.image_size, input_transform=config.input_transform) for path in paths_in]
+        imgs_in = np.array(imgs_in).astype(np.float32)
+        
+        self.load_checkpoints()
+        
+        images_out = np.zeros(n, self.image_size, self.image_size, self.c_dim)
+
+        for i in range(n):
+            sample, d_loss, g_loss = self.sess.run([self.G], feed_dict={self.images_input : [imgs_in[i]], self.is_training : False})
+            images_out[i] = sample
+        
+        util.save_images(images_out, paths_out)
 
     def save(self, step):
         """Save the current state of the model to the checkpoint directory"""
