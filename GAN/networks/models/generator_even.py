@@ -41,7 +41,8 @@ class EvenGenerator(Generator):
             x = self.bns[5](x, is_training)
             x = lrelu(x, 0.8)
 
-            x = conv2d(x, 3, (3, 3), (1, 1), name='g_07_conv')
+            # Dense layer, kernel=(1, 1)
+            x = conv2d(x, 3, (1, 1), (1, 1), name='g_07_conv')
             x = lrelu(x, 1.0)
 
             return tf.nn.tanh(x)
