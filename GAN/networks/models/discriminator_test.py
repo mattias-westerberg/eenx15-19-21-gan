@@ -32,6 +32,6 @@ class TestDisctriminator(Disctriminator):
             #16
             x = linear(x, 1, "d_06_lin")
 
-            return x, tf.nn.sigmoid(x)
+            return x
 
             #return self.model(image, is_training)

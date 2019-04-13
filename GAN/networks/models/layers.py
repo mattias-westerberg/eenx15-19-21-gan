@@ -4,7 +4,7 @@ import scipy.misc
 
 #BATCH NORMALISATION OBJECT
 class batch_norm(object):
-    def __init__(self, epsilon=1e-5, momentum=0.9, name="batch_norm"):
+    def __init__(self, epsilon=1e-5, momentum=0.99, name="batch_norm"):
         with tf.variable_scope(name):
             self.epsilon = epsilon
             self.momentum = momentum
@@ -63,3 +63,6 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
             return tf.matmul(input_, matrix) + bias, matrix, bias
         else:
             return tf.matmul(input_, matrix) + bias
+
+def flatten(x, output_dim):
+    return tf.reshape(x, [-1, output_dim])

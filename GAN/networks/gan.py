@@ -46,40 +46,45 @@ class GAN():
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
         self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_real')
+        self.images_fake = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_fake')
         self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_input')
         self.bboxes = tf.placeholder(tf.int32, shape=(None, 5))
         self.batch_size = tf.placeholder(tf.int32, shape=())
 
-        self.G = self.generator(self.images_input, self.is_training)
+        self.images_fake = self.generator(self.images_input, self.is_training)
 
-        self.D_real, self.D_real_logits = self.discriminator(self.images_real, is_training=self.is_training)
-        self.D_fake, self.D_fake_logits = self.discriminator(self.G, reuse=True, is_training=self.is_training)
+        self.D_real = self.discriminator(self.images_real, is_training=self.is_training)
+        self.D_fake = self.discriminator(self.images_fake, reuse=True, is_training=self.is_training)
 
         self.d_real_sum = tf.summary.histogram("d_real", self.D_real)
         self.d_fake_sum = tf.summary.histogram("d_fake", self.D_fake)
 
-        str_input = "g_input/"
-        str_output = "g_output/"
+        str_input = "input/"
+        str_fake = "fake/"
+        str_real = "real/"
 
         with tf.name_scope(None):
             with tf.name_scope(str_input):
-                self.G_input_sum = tf.summary.image("g_input_image", self.images_input)
-            with tf.name_scope(str_output):
-                self.G_output_sum = tf.summary.image("g_output_image", self.G)
+                self.input_sum = tf.summary.image("input_image", self.images_input)
+            with tf.name_scope(str_fake):
+                self.fake_sum = tf.summary.image("fake_image", self.images_fake)
+            with tf.name_scope(str_real):
+                self.real_sum = tf.summary.image("real_image", self.images_real)
 
-        self.d_loss_real = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real_logits,
-                                                    labels=tf.ones_like(self.D_real)))
-        self.d_loss_fake = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
-                                                    labels=tf.zeros_like(self.D_fake)))
-        self.g_loss_image = self.image_weight * tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake_logits,
-                                                    labels=tf.ones_like(self.D_fake)))
+        self.d_correct_real = tf.math.reduce_sum(tf.math.round(tf.nn.sigmoid(self.D_real)))
+        self.d_correct_fake = tf.math.reduce_sum(tf.math.round(1.0 - tf.nn.sigmoid(self.D_fake)))
+
+        d_loss_real_logits = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_real, labels=tf.ones_like(self.D_real))
+        d_loss_fake_logits = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake, labels=tf.zeros_like(self.D_fake))
+        g_loss_image_logits = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_fake, labels=tf.ones_like(self.D_fake))
+
+        self.d_loss_real = tf.reduce_mean(d_loss_real_logits)
+        self.d_loss_fake = tf.reduce_mean(d_loss_fake_logits)
+        self.g_loss_image = self.image_weight * tf.reduce_mean(g_loss_image_logits)
         
         def loop_body(i, losses, bb_imgs_in, bb_imgs_out):
             img_in = self.images_input[i]
-            img_out = self.G[i]
+            img_out = self.images_fake[i]
             bb = self.bboxes[i]
             img_in_cropped = tf.image.crop_to_bounding_box(img_in, bb[1], bb[0], bb[3] - bb[1], bb[2] - bb[0])
             img_out_cropped = tf.image.crop_to_bounding_box(img_out, bb[1], bb[0], bb[3] - bb[1], bb[2] - bb[0])
@@ -106,10 +111,10 @@ class GAN():
             with tf.name_scope(None):
                 with tf.name_scope(str_input):
                     self.images_input_cropped = bb_imgs_in
-                    self.G_input_cropped_sum = tf.summary.image("g_input_crop", self.images_input_cropped)
-                with tf.name_scope(str_output):
+                    self.input_cropped_sum = tf.summary.image("input_crop", self.images_input_cropped)
+                with tf.name_scope(str_fake):
                     self.images_output_cropped = bb_imgs_out
-                    self.G_output_cropped_sum = tf.summary.image("g_output_crop", self.images_output_cropped)
+                    self.fake_cropped_sum = tf.summary.image("fake_crop", self.images_output_cropped)
 
             return tf.reduce_mean(losses)
 
@@ -150,7 +155,7 @@ class GAN():
             data_input = list(dict_input.keys())
             dict_input = {key : val[0] for key, val in dict_input.items()}
             dict_input = util.resize_bounding_boxes(dict_input, self.image_size)
-
+            
         np.random.shuffle(data_input)
         np.random.shuffle(data_real)
 
@@ -166,8 +171,9 @@ class GAN():
         
         self.g_sum = tf.summary.merge([
             self.d_fake_sum,
-            self.G_input_sum,
-            self.G_output_sum,
+            self.input_sum,
+            self.fake_sum,
+            self.real_sum,
             self.d_loss_fake_sum,
             self.g_loss_sum,
             self.g_loss_image_sum])
@@ -176,8 +182,8 @@ class GAN():
             self.g_sum = tf.summary.merge([
             self.g_sum,
             self.g_loss_bbox_sum,
-            self.G_input_cropped_sum,
-            self.G_output_cropped_sum])
+            self.input_cropped_sum,
+            self.fake_cropped_sum])
 
         self.d_sum = tf.summary.merge([
             self.d_real_sum,
@@ -224,12 +230,12 @@ class GAN():
                     
                     #update G network
                     _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                                feed_dict={self.batch_size : config.batch_size, self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : True, self.use_bboxes : self.is_input_annotations})
+                                                feed_dict={self.batch_size : config.batch_size, self.images_input : batch_images_input, self.images_real : batch_images_real, self.bboxes : batch_bboxes, self.is_training : True, self.use_bboxes : self.is_input_annotations})
                     self.writer.add_summary(summary_str, counter)
                     
                     #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
                     _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                                feed_dict={self.batch_size : config.batch_size, self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training: True, self.use_bboxes : self.is_input_annotations})
+                                                feed_dict={self.batch_size : config.batch_size, self.images_input : batch_images_input, self.images_real : batch_images_real, self.bboxes : batch_bboxes, self.is_training: True, self.use_bboxes : self.is_input_annotations})
                     self.writer.add_summary(summary_str, counter)
                     
                     errD_fake = self.d_loss_fake.eval({self.batch_size : config.batch_size, self.images_input : batch_images_input, self.is_training : False})
@@ -245,7 +251,7 @@ class GAN():
                     g_losses = 0.0
                     d_losses = 0.0
                     for i in range(config.sample_size):
-                        sample, d_loss, g_loss = self.sess.run([self.G, self.d_loss, self.g_loss], 
+                        sample, d_loss, g_loss = self.sess.run([self.images_fake, self.d_loss, self.g_loss], 
                                                             feed_dict={self.batch_size : config.batch_size, self.images_input : [sample_images_input[i]], self.bboxes : [sample_bboxes[i]], self.images_real : [sample_images_real[i]], self.is_training : False, self.use_bboxes : self.is_input_annotations})
                         d_losses += d_loss
                         g_losses += g_losses
@@ -257,7 +263,66 @@ class GAN():
                 if np.mod(counter, config.checkpoint_interval) == 2:
                     self.save(counter)
     
-    def inference(self, sess, dir_in, dir_out, config):
+    def train_discriminator(self, sess, dir_fake, dir_real, config):
+        self.sess = sess
+        paths_fake = util.get_paths(dir_fake)
+        paths_real = util.get_paths(dir_real)
+
+        assert(len(paths_fake) > 0 and len(paths_real) > 0)
+
+        np.random.shuffle(paths_fake)
+        np.random.shuffle(paths_real)
+
+        d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.d_loss, var_list=self.d_vars)
+        
+        try:
+            tf.global_variables_initializer().run()
+        except:
+            tf.initialize_all_variables().run()
+
+        self.d_sum = tf.summary.merge([
+            self.fake_sum,
+            self.real_sum,
+            self.d_real_sum,
+            self.d_loss_real_sum,
+            self.d_loss_sum])
+
+        self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
+
+        counter = 1
+        start_time = time.time()
+        
+        self.load_checkpoints()
+
+        # https://github.com/tensorflow/tensorflow/issues/16455
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            for epoch in range(config.epoch):
+                batch_idxs = min(len(paths_fake), config.train_size) // config.batch_size
+
+                for idx in range(batch_idxs):
+                    batch_files_fake = paths_fake[idx * config.batch_size : (idx + 1) * config.batch_size]
+                    batch_files_real = paths_real[idx * config.batch_size : (idx + 1) * config.batch_size]
+                    batch_fake = [util.get_image(f, self.image_size, input_transform=config.input_transform) for f in batch_files_fake]
+                    batch_real = [util.get_image(f, self.image_size, input_transform=config.input_transform) for f in batch_files_real]
+                    batch_images_fake = np.array(batch_fake).astype(np.float32)
+                    batch_images_real = np.array(batch_real).astype(np.float32)
+
+                    errD, errD_fake, errD_real, d_correct_fake, d_correct_real, summary_str = self.sess.run(
+                        [d_optim, self.d_loss_fake, self.d_loss_real, self.d_correct_fake, self.d_correct_real, self.d_sum],
+                        feed_dict={self.batch_size : config.batch_size, self.images_fake : batch_images_fake, self.images_real : batch_images_real, self.is_training: True})
+                    
+                    self.writer.add_summary(summary_str, counter)
+                    
+                    counter += 1
+
+                    print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, d_loss_fake: {:.8f}, d_loss_real: {:.8f}, d_correct_fake: {:.0f}/{:.0f}, d_correct_real: {:.0f}/{:.0f}".format(
+                            epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errD_fake, errD_real, d_correct_fake, config.batch_size, d_correct_real, config.batch_size))
+                        
+                    if np.mod(counter, config.checkpoint_interval) == 2:
+                        self.save(counter)
+
+    def infer(self, sess, dir_in, dir_out, config):
         assert(os.path.isdir(dir_in))
 
         if (not os.path.exists(dir_out)):
@@ -272,8 +337,6 @@ class GAN():
 
         paths_out = [dir_out + "/" + os.path.basename(pth) for pth in paths_in]
 
-        dict_in = {pth : [0]*5 for pth in paths_in}
-
         try:
             tf.global_variables_initializer().run()
         except:
@@ -284,11 +347,11 @@ class GAN():
         
         self.load_checkpoints()
         
-        images_out = np.zeros(n, self.image_size, self.image_size, self.c_dim)
+        images_out = np.zeros((n, self.image_size, self.image_size, self.c_dim))
 
         for i in range(n):
-            sample, d_loss, g_loss = self.sess.run([self.G], feed_dict={self.images_input : [imgs_in[i]], self.is_training : False})
-            images_out[i] = sample
+            output = self.sess.run([self.images_fake], feed_dict={self.images_input : [imgs_in[i]], self.is_training : False})[0]
+            images_out[i] = output
         
         util.save_images(images_out, paths_out)
 

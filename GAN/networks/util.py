@@ -36,10 +36,12 @@ def resize_bounding_boxes(bounding_boxes, new_size):
         image = imread(path)
         xr = new_size / image.shape[0]
         yr = new_size / image.shape[1]
-        x0 = xr * val[0]
-        y0 = yr * val[1]
-        x1 = xr * val[2]
-        y1 = yr * val[3]
+        
+        # Clamp values to [0, new_size) for the bounding box loss function to work.
+        x0 = max(0, min(xr * val[0], new_size - 1))
+        y0 = max(0, min(yr * val[1], new_size - 1)) 
+        x1 = max(0, min(xr * val[2], new_size - 1))
+        y1 = max(0, min(yr * val[3], new_size - 1))
         c = val[4]
         res[path] = [x0, y0, x1, y1, c]
 
