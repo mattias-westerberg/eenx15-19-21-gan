@@ -55,9 +55,6 @@ class Discriminator_VGG19(Disctriminator):
             x = tf.layers.dropout(x, rate=0.5)
             x = tf.layers.dense(x, 4096, activation=relu)
             x = tf.layers.dropout(x, rate=0.5)
-
-            
-            x = flatten(x, 4096)
-            x = linear(x, 1, 'l_out')
+            x = tf.layers.dense(x, 1, activation='sigmoid')
 
             return x
