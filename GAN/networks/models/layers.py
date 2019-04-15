@@ -66,3 +66,7 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
 
 def flatten(x, output_dim):
     return tf.reshape(x, [-1, output_dim])
+
+def max_pool(input_, k, s, name="MaxPool"):
+    with tf.variable_scope(name):
+        return tf.nn.max_pool(input_, ksize=[1, k[0], k[1], 1], strides=[1, s[0], s[1], 1], padding='SAME', name=name)
