@@ -2,6 +2,7 @@ import numpy as np
 import scipy.misc
 import os
 import re
+import glob
 
 TRANSFORM_CROP = "crop"
 TRANSFORM_RESIZE = "resize"
@@ -60,10 +61,12 @@ def get_paths(directory):
     
     print(directory)
     paths = []
-    for root, directories, filenames in os.walk(directory):
-        for f in filenames:
+    for f in glob.iglob(directory + '**/**', recursive=True):
+        if os.path.isfile(f):
             if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
                 paths.append(f)
+                print(f)
+
     return paths
 
 
