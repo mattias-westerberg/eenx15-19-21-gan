@@ -3,12 +3,15 @@
 
 from .generator import Generator
 from .layers import *
+import tensorflow as tf
 
 
 class FeedForwardGenerator(Generator):
     def __init__(self, image_size):
         Generator.__init__(self)
         self.image_size = image_size
+        self.ff_block1 = tf.Variable(0.3, name='ff_block1')   # Trainable=True default
+        self.ff_block2 = tf.Variable(0.3, name='ff_block2')
         assert(image_size == 256)
         with tf.variable_scope("generator"):
             self.bns = [batch_norm(name="g_bn0{}".format(i,)) for i in range(12)]
@@ -108,7 +111,7 @@ class FeedForwardGenerator(Generator):
             # Same amount of feature maps (256)
             # MERGE LAYER: Half of the feature maps come from block 2 and the rest from block 3
             # 128x128x128
-            x = tf.concat([x, fm2], axis=-1)
+            x = tf.concat([x, fm2*self.ff_block2], axis=-1)
             x = deconv2d(x, [self.batch_size, 128, 128, 256], (3, 3), (1, 1), name='g_08_deconvMerge')
             x = self.bns[7](x, is_training)
             x = lrelu(x, 0.8)
@@ -136,7 +139,7 @@ class FeedForwardGenerator(Generator):
             # Same amount of feature maps (128)
             # MERGE LAYER: Half of the feature maps come from block 1 and the rest from block 4
             # 256x256x64
-            x = tf.concat([x, fm1], axis=-1)
+            x = tf.concat([x, fm1*self.ff_block1], axis=-1)
             x = deconv2d(x, [self.batch_size, 256, 256, 128], (3, 3), (1, 1), name='g_11_deconvMerge')
             x = self.bns[10](x, is_training)
             x = lrelu(x, 0.8)
