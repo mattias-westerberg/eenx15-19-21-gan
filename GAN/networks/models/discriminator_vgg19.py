@@ -60,7 +60,7 @@ class Discriminator_VGG19(Disctriminator):
                 x = max_pool(x, (2, 2), (2, 2), name='vgg_15_maxpool')
 
                 # 16x16x512
-                x = conv2d(x, self.fm * 8, (3, 3), (1, 1), name='vgg_13_conv')
+                x = conv2d(x, 512, (3, 3), (1, 1), name='vgg_13_conv')
 
                 x = relu(x)
                 x = conv2d(x, 512, (3, 3), (1, 1), name='vgg_17_conv')
