@@ -60,7 +60,7 @@ def get_paths(directory):
     """
     
     paths = []
-    for f in glob.iglob(directory + '**/**', recursive=True):
+    for f in glob.iglob(directory + "/**", recursive=True):
         if os.path.isfile(f):
             if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
                 paths.append(f)
