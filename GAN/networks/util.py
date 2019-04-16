@@ -65,7 +65,6 @@ def get_paths(directory):
         if os.path.isfile(f):
             if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
                 paths.append(f)
-                print(f)
 
     return paths
 
