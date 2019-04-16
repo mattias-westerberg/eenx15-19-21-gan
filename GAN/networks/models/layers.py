@@ -49,6 +49,16 @@ def deconv2d(input_, output_shape, k, s, stddev=0.02, name="conv2d_transpose", w
 def lrelu(x, leak, name="lrelu"):
     with tf.variable_scope(name):
         return tf.nn.leaky_relu(x, leak, name)
+
+def relu(x, name='relu'):
+    with tf.variable_scope(name):
+        return tf.nn.relu(x, name)
+
+
+def dropout(x, rate=0.5, name='dropout'):
+    with tf.variable_scope(name):
+        return tf.nn.dropout(x, rate=rate)
+
         
 #LINEAR FUNCTION
 def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from .discriminator import Disctriminator
-from .layers import *
+from eenx15_19_21_gan.GAN.networks.models.discriminator import Disctriminator
+from eenx15_19_21_gan.GAN.networks.models.layers import *
 
 class TestDisctriminator(Disctriminator):
     def __init__(self, image_size):

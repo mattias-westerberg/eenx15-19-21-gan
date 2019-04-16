@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from .generator import Generator
-from .layers import *
+from eenx15_19_21_gan.GAN.networks.models.generator import Generator
+from eenx15_19_21_gan.GAN.networks.models.layers import *
 
 class WirehedGenerator(Generator):
     def __init__(self, image_size):

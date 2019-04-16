@@ -3,7 +3,7 @@ import tensorflow as tf
 from .discriminator import Disctriminator
 from .layers import *
 
-class TFDisctriminator(Disctriminator):
+class cnnDisctriminator(Disctriminator):
     def __init__(self, image_size):
         Disctriminator.__init__(self)
         self.d_bns = [batch_norm(name="d_bn{}".format(i,)) for i in range(3)]
