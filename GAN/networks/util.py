@@ -62,6 +62,7 @@ def get_paths(directory):
     paths = []
     for dirpath, dirnames, files in os.walk(os.path.join(os.getcwd(), directory)):
         for f in files:
+            print(f)
             if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
                 paths.append(os.path.join(dirpath, f))
 
