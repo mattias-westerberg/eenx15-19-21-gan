@@ -60,7 +60,7 @@ class Discriminator_VGG19(Disctriminator):
                 x = max_pool(x, (2, 2), (2, 2), name='vgg_15_maxpool')
 
                 # 16x16x512
-                x = conv2d(x, 512, (3, 3), (1, 1), name='vgg_13_conv')
+                x = conv2d(x, 512, (3, 3), (1, 1), name='vgg_16_conv')
 
                 x = relu(x)
                 x = conv2d(x, 512, (3, 3), (1, 1), name='vgg_17_conv')
@@ -73,11 +73,11 @@ class Discriminator_VGG19(Disctriminator):
 
                 #8x8x256
                 x = flatten(x, 8 * 8 * 512)
-                x = linear(x, 1024, scope='vgg_18_dense')       # OBS: for linear layer name=scope instead
-                x = dropout(x, rate=0.5, name='vgg_19_dropout')
-                x = linear(x, 1024, scope='vgg_20_dense')
-                x = dropout(x, rate=0.5, name='vgg_21_dropout')
-                x = linear(x, 1, scope='vgg_22_dense')
+                x = linear(x, 1024, scope='vgg_21_dense')       # OBS: for linear layer name=scope instead
+                x = dropout(x, rate=0.5, name='vgg_22_dropout')
+                x = linear(x, 1024, scope='vgg_23_dense')
+                x = dropout(x, rate=0.5, name='vgg_24_dropout')
+                x = linear(x, 1, scope='vgg_25_dense')
 
                 x = tf.nn.sigmoid(x)
 
