@@ -57,8 +57,15 @@ def get_paths(directory):
     RETURNS
         - a list of the files
     """
-    paths = [os.path.join(directory, f) for f in os.listdir(directory) if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS)]
+    
+    print(directory)
+    paths = []
+    for root, directories, filenames in os.walk(directory):
+        for f in filenames:
+            if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
+                paths.append(f)
     return paths
+
 
 def get_image(image_path, image_size, input_transform=TRANSFORM_RESIZE):
     """ Loads the image and transforms it to 'image_size'
