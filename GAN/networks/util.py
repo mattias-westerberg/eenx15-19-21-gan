@@ -59,7 +59,6 @@ def get_paths(directory):
         - a list of the files
     """
     
-    print(directory)
     paths = []
     for f in glob.iglob(directory + '**/**', recursive=True):
         if os.path.isfile(f):
