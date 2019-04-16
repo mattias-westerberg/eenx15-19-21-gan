@@ -50,11 +50,11 @@ gan_ff = GAN("FeedForwardGAN", FeedForwardGenerator(256), SRGANDisctriminator(25
 
 
 with tf.Session(config=config) as sess:
-    gan_ff.train(sess, FLAGS)
+    #gan_ff.train(sess, FLAGS)
     
     #gan_ff.infer(sess, "tests/test_inference", "inference_output", FLAGS)
 
     #FLAGS.checkpoint_interval = 100
     #FLAGS.batch_size = 4
     #FLAGS.learning_rate = 0.0001
-    #gan_ff.train_discriminator(sess, "tests/lisa_merged_c256", "tests/nexar_night_c256", FLAGS)
+    gan_ff.train_discriminator(sess, "tests/lisa_c256", "tests/nexar_night_c256", FLAGS)
