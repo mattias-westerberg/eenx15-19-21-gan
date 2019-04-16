@@ -2,16 +2,14 @@
 import os
 import tensorflow as tf
 
-from .networks.gan import GAN
+from networks.gan import GAN
 
-from .networks.models.generator_feedforward import FeedForwardGenerator
-from .networks.models.generator_autoenc import AutoEncoderGenerator
-from .networks.models.generator_even import EvenGenerator
-from .networks.models.discriminator_srgan import SRGANDisctriminator
-from .networks.models.discriminator_vgg19 import Discriminator_VGG19
-from .networks.models.discriminator_ccn import cnnDisctriminator
-
-
+from networks.models.generator_feedforward import FeedForwardGenerator
+from networks.models.generator_autoenc import AutoEncoderGenerator
+from networks.models.generator_even import EvenGenerator
+from networks.models.discriminator_srgan import SRGANDisctriminator
+from networks.models.discriminator_vgg19 import Discriminator_VGG19
+from networks.models.discriminator_cnn import CNNDisctriminator
 
 # Disable some TF warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -33,8 +31,8 @@ flags.DEFINE_float("beta1", 0.5, "Momentum term for adam optimiser [0.5]")
 flags.DEFINE_integer("train_size", 9652, "The size of training images [np.inf]")
 flags.DEFINE_integer("batch_size", 1, "The batch-size (number of images to train at once) [64]")
 flags.DEFINE_integer("image_size", 256, "The size of the images [n x n] [64]")
-flags.DEFINE_string("dataset_real", "tests/nexar_night_c256", "Real dataset directory [tests/test_images_night].")
-flags.DEFINE_string("dataset_input", "tests/lisa_c256.txt", "Input dataset directory [tests/test_images_day].")
+flags.DEFINE_string("dataset_real", "tests/test_images_night", "Real dataset directory [tests/test_images_night].")
+flags.DEFINE_string("dataset_input", "tests/test_images_day", "Input dataset directory [tests/test_images_day].")
 flags.DEFINE_string("output_dir", "outputs", "Directory name to save the outputs of the model [outputs]")
 flags.DEFINE_string("input_transform", "resize", "How to pre-process the input images [resize]")
 flags.DEFINE_integer("sample_interval", 10, "Number of epochs between samples [16]")
@@ -45,7 +43,7 @@ FLAGS = flags.FLAGS
 gan_even = GAN("EvenGAN", EvenGenerator(256), Discriminator_VGG19(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
 
 
-gan_auto_encoder = GAN("AutoEncoderGAN", AutoEncoderGenerator(256), cnnDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+gan_auto_encoder = GAN("AutoEncoderGAN", AutoEncoderGenerator(256), CNNDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
 
 
 gan_ff = GAN("FeedForwardGAN", FeedForwardGenerator(256), SRGANDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
