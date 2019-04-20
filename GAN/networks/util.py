@@ -60,7 +60,7 @@ def get_paths(directory):
     """
     
     paths = []
-    for dirpath, dirnames, files in os.walk(os.path.join(os.getcwd(), directory)):
+    for dirpath, dirnames, files in os.walk(directory):
         for f in files:
             if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
                 paths.append(os.path.join(dirpath, f))
@@ -136,13 +136,14 @@ def merge(images, shape):
 
     RETURNS
         - image array as a single image
-    """ 
+    """
     h, w = images.shape[1], images.shape[2]
     img = np.zeros((int(h * shape[0]), int(w * shape[1]), 3))
+    
     for idx, image in enumerate(images):
         i = idx % shape[1]
         j = idx // shape[1]
-        img[j*h:j*h+h, i*w:i*w+w, :] = image
+        img[j*h:(j+1)*h, i*w:(i+1)*w, :] = image
 
     return img
     
@@ -183,7 +184,7 @@ def save_mosaic(images, shape, path):
     imgs = inverse_transform(images)
     imgs = (255 * imgs).astype(np.uint8)
     img = merge(imgs, shape)
-    return imsave(img, [path])
+    return imsave([img], [path])
 
 #INVERSE TRANSFORMATION OF INTENSITITES
 def inverse_transform(images):
