@@ -295,32 +295,32 @@ class GAN():
         self.load_checkpoints()
 
         # https://github.com/tensorflow/tensorflow/issues/16455
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            for epoch in range(config.epoch):
-                batch_idxs = min(len(paths_fake), config.train_size) // config.batch_size
+        #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        #with tf.control_dependencies(update_ops):
+        for epoch in range(config.epoch):
+            batch_idxs = min(len(paths_fake), config.train_size) // config.batch_size
 
-                for idx in range(batch_idxs):
-                    batch_files_fake = paths_fake[idx * config.batch_size : (idx + 1) * config.batch_size]
-                    batch_files_real = paths_real[idx * config.batch_size : (idx + 1) * config.batch_size]
-                    batch_fake = [util.get_image(f, self.image_size, input_transform=config.input_transform) for f in batch_files_fake]
-                    batch_real = [util.get_image(f, self.image_size, input_transform=config.input_transform) for f in batch_files_real]
-                    batch_images_fake = np.array(batch_fake).astype(np.float32)
-                    batch_images_real = np.array(batch_real).astype(np.float32)
+            for idx in range(batch_idxs):
+                batch_files_fake = paths_fake[idx * config.batch_size : (idx + 1) * config.batch_size]
+                batch_files_real = paths_real[idx * config.batch_size : (idx + 1) * config.batch_size]
+                batch_fake = [util.get_image(f, self.image_size, input_transform=config.input_transform) for f in batch_files_fake]
+                batch_real = [util.get_image(f, self.image_size, input_transform=config.input_transform) for f in batch_files_real]
+                batch_images_fake = np.array(batch_fake).astype(np.float32)
+                batch_images_real = np.array(batch_real).astype(np.float32)
 
-                    errD, errD_fake, errD_real, d_correct_fake, d_correct_real, summary_str = self.sess.run(
-                        [d_optim, self.d_loss_fake, self.d_loss_real, self.d_correct_fake, self.d_correct_real, self.d_sum],
-                        feed_dict={self.batch_size : config.batch_size, self.images_fake : batch_images_fake, self.images_real : batch_images_real, self.is_training: True})
+                errD, errD_fake, errD_real, d_correct_fake, d_correct_real, summary_str = self.sess.run(
+                    [d_optim, self.d_loss_fake, self.d_loss_real, self.d_correct_fake, self.d_correct_real, self.d_sum],
+                    feed_dict={self.batch_size : config.batch_size, self.images_fake : batch_images_fake, self.images_real : batch_images_real, self.is_training: True})
+                
+                self.writer.add_summary(summary_str, counter)
+                
+                counter += 1
+
+                print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, d_loss_fake: {:.8f}, d_loss_real: {:.8f}, d_correct_fake: {:.0f}/{:.0f}, d_correct_real: {:.0f}/{:.0f}".format(
+                        epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errD_fake, errD_real, d_correct_fake, config.batch_size, d_correct_real, config.batch_size))
                     
-                    self.writer.add_summary(summary_str, counter)
-                    
-                    counter += 1
-
-                    print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, d_loss_fake: {:.8f}, d_loss_real: {:.8f}, d_correct_fake: {:.0f}/{:.0f}, d_correct_real: {:.0f}/{:.0f}".format(
-                            epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errD_fake, errD_real, d_correct_fake, config.batch_size, d_correct_real, config.batch_size))
-                        
-                    if np.mod(counter, config.checkpoint_interval) == 2:
-                        self.save(counter)
+                if np.mod(counter, config.checkpoint_interval) == 2:
+                    self.save(counter)
 
     def infer(self, sess, dir_in, dir_out, config):
         assert(os.path.isdir(dir_in))

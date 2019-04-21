@@ -11,7 +11,7 @@ class EvenGenerator(Generator):
         assert(image_size == 256)
         with tf.variable_scope("generator"):
             with tf.variable_scope("even"):
-                self.bns = [batch_norm(name="g_bn0{}".format(i,)) for i in range(9)]
+                self.bns = [batch_norm(name="g_bn0{}".format(i,)) for i in range(5)]
 
     def __call__(self, image, is_training):
         with tf.variable_scope("generator"):
