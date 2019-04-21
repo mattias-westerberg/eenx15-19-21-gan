@@ -55,4 +55,4 @@ class SRGANDisctriminator(Disctriminator):
             """ 10 """
             x = linear(x, 1, "d_10_lin")
 
-            return x, tf.nn.sigmoid(x)
+            return x

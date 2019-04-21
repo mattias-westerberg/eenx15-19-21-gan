@@ -79,6 +79,4 @@ class Discriminator_VGG19(Disctriminator):
                 x = dropout(x, rate=0.5, name='vgg_24_dropout')
                 x = linear(x, 1, scope='vgg_25_dense')
 
-                x = tf.nn.sigmoid(x)
-
                 return x
