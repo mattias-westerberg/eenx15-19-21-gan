@@ -8,22 +8,16 @@ TRANSFORM_CROP = "crop"
 TRANSFORM_RESIZE = "resize"
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
 
+# Return a dictionary with the form { image_path : [[x0 y0 x1 y1 c]] }
 def load_data(file_name):
-    """
-    Return a dictionary with the form { image_path : [[x0 y0 x1 y1 c]] }
-    """
-    dir_name = os.path.dirname(file_name)
-    train_dict = dict()
-    train_imgs = []  # useful to keep an ordering of the imgs
+    train_dict = {}
     with open(file_name, "r") as file:
         for line in file:
-            info = re.split(",| ", line[:-1])  # the last character is '\n'
-            img_path = dir_name + "/" + info[0]
-            train_imgs.append(img_path)
+            info = re.split(",| ", line[:-1])  # the last character is "\n"
+            img_path = os.path.dirname(file_name) + "/" + info[0]
             bounding_boxes = []  # with the label
             for i in range(1, len(info), 5):
                 bounding_boxes.append([int(value) for value in info[i:i + 5]])
-
             train_dict[img_path] = bounding_boxes
 
     return train_dict
@@ -48,95 +42,44 @@ def resize_bounding_boxes(bounding_boxes, new_size):
 
     return res
 
+# Produces a list of supported filetypes from the specified directory.
 def get_paths(directory):
-    """
-    Produces a list of supported filetypes from the specified directory.
-
-    INPUTS
-        directory:    the directory path containing the files
-
-    RETURNS
-        - a list of the files
-    """
-    
     paths = []
-    for dirpath, dirnames, files in os.walk(directory):
+    for dirpath, _, files in os.walk(directory):
         for f in files:
             if any(f.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
                 paths.append(os.path.join(dirpath, f))
-
     return paths
 
-
+# Loads the image and transforms it to image_size
 def get_image(image_path, image_size, input_transform=TRANSFORM_RESIZE):
-    """ Loads the image and transforms it to 'image_size'
-
-    Args:
-        input_transform:    the method used to reshape the image
-        image_path: location of the image
-        image_size: size (in pixels) of the output image
-
-    Returns:
-        the cropped image
-    """
     return transform(imread(image_path), image_size, input_transform)
 
+# Reads in the image (part of get_image function)
 def imread(path):
-    """ Reads in the image (part of get_image function)"""
-    return scipy.misc.imread(path, mode='RGB').astype(np.float)
+    return scipy.misc.imread(path, mode="RGB").astype(np.float)
 
-# TRANSFORM/CROPPING WRAPPER
+# Transforms the image by cropping and resizing and normalises intensity values between 0 and 1
 def transform(image, npx=64, input_transform=TRANSFORM_RESIZE):
-    """ Transforms the image by cropping and resizing and 
-    normalises intensity values between -1 and 1
-
-    INPUT
-        image:      the image to be transformed
-        npx:        the size of the transformed image [npx x npx]
-        is_crop:    whether to preform cropping too [True or False]
-
-    RETURNS
-        - the transformed, normalised image
-    """
     if input_transform == TRANSFORM_CROP:
         output = center_crop(image, npx)
     elif input_transform == TRANSFORM_RESIZE:
-        output = scipy.misc.imresize(image, (npx, npx), interp='bicubic')
+        output = scipy.misc.imresize(image, (npx, npx), interp="bicubic")
     else:
         output = image
-    return np.array(output) / 255.0
+    return byte2norm(np.array(output))
 
-# IMAGE CROPPING FUNCTION
+# Crops the input image at the centre pixel
 def center_crop(x, crop_h, crop_w=None, resize_w=64):
-    """ Crops the input image at the centre pixel
-
-    INPUTS
-        x:      the input image
-        crop_h: the height of the crop region
-        crop_w: if None crop width = crop height
-        resize_w: the width of the resized image
-
-    RETURNS
-        - the cropped image
-    """
     if crop_w is None:
         crop_w = crop_h
     h, w = x.shape[:2]
-    j = int(round((h - crop_h)/2.))
-    i = int(round((w - crop_w)/2.))
+    j = int(round((h - crop_h) / 2.0))
+    i = int(round((w - crop_w) / 2.0))
     return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w], [resize_w, resize_w])
 
-#CREATE IMAGE ARRAY FUNCTION
+# Takes a set of "images" and creates an array from them.
 def merge(images, shape):
-    """ Takes a set of 'images' and creates an array from them.
-
-    INPUT
-        images:     the set of input images
-        shape:       [height, width] of the array
-
-    RETURNS
-        - image array as a single image
-    """
     h, w = images.shape[1], images.shape[2]
     img = np.zeros((int(h * shape[0]), int(w * shape[1]), 3))
     
@@ -147,53 +90,24 @@ def merge(images, shape):
 
     return img
     
-#ARRAY TO IMAGE FUNCTION
+# Save array of images to disk
 def imsave(images, paths):
-    """ Takes a set of `images` and calls the merge function. Converts
-    the array to image data.
-
-    INPUT
-        images: the set of input images
-        size:   [height, width] of the array
-        path:   the save location
-
-    RETURNS
-        - an image array
-    """
-    
     for img, pth in zip(images, paths):
-        directory = os.path.dirname(pth)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        os.makedirs(os.path.dirname(pth), exist_ok=True)
         scipy.misc.imsave(pth, img)
 
-#SAVE IMAGE FUNCTION
+# Save images to disk
 def save_images(images, paths):
-    """ takes an image and saves it to disk. Redistributes
-    intensity values [-1 1] from [0 255]
-    """
-    #imgs = inverse_transform(images)
-    imgs = (255 * images).astype(np.uint8)
-    return imsave(imgs, paths)
+    return imsave(norm2byte(images), paths)
 
-#SAVE IMAGE FUNCTION
+# Save images as a single mosaic to disk
 def save_mosaic(images, shape, path):
-    """ takes an image and saves it to disk. Redistributes
-    intensity values from [0 1] to [0 255]
-    """
-    #imgs = inverse_transform(images)
-    imgs = (255 * images).astype(np.uint8)
-    img = merge(imgs, shape)
-    return imsave([img], [path])
+    return imsave([merge(norm2byte(images), shape)], [path])
 
-#INVERSE TRANSFORMATION OF INTENSITITES
-def inverse_transform(images):
-    """ This turns the intensities from [-1 1] to [0 1]
+# Redistribute intensity values from [0 1] to [0 255]
+def norm2byte(x):
+    return (255 * x).astype(np.uint8)
 
-    INPUTS
-        images:    the image to be transformed
-
-    RETURNS
-        -the transformed image
-    """
-    return (images + 1.0) / 2.
+# Redistribute intensity values from [0 255] to [0 1]
+def byte2norm(x):
+    return x / 255.0

@@ -12,7 +12,7 @@ from networks.models.discriminator_vgg19 import Discriminator_VGG19
 from networks.models.discriminator_cnn import CNNDisctriminator
 
 # Disable some TF warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 # Options to limit GPU usage

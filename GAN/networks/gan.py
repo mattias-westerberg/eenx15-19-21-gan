@@ -44,10 +44,10 @@ class GAN():
         self.build_model()
 
     def build_model(self):
-        self.is_training = tf.placeholder(tf.bool, name='is_training')
-        self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_real')
-        self.images_fake = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_fake')
-        self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name='images_input')
+        self.is_training = tf.placeholder(tf.bool, name="is_training")
+        self.images_real = tf.placeholder(tf.float32, [None] + self.image_shape, name="images_real")
+        self.images_fake = tf.placeholder(tf.float32, [None] + self.image_shape, name="images_fake")
+        self.images_input = tf.placeholder(tf.float32, [None] + self.image_shape, name="images_input")
         self.bboxes = tf.placeholder(tf.int32, shape=(None, 5))
         self.batch_size = tf.placeholder(tf.int32, shape=())
 
@@ -132,8 +132,8 @@ class GAN():
         self.d_loss_fake_sum = tf.summary.scalar("d_loss_fake", self.d_loss_fake)
         self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
         
-        self.d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
-        self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
+        self.d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="discriminator")
+        self.g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="generator")
 
         self.saver_generator = tf.train.Saver(max_to_keep=1, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="generator"))
         self.saver_discriminator = tf.train.Saver(max_to_keep=1, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="discriminator"))
