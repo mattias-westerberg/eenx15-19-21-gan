@@ -379,7 +379,7 @@ class GAN():
         paths_in = util.get_paths(dir_in)
         n = len(paths_in)
         assert(n > 0)
-
+        
         paths_out = []
         for path in paths_in:
             path_list = os.path.normpath(path).split(os.sep)
@@ -392,17 +392,15 @@ class GAN():
         except:
             tf.initialize_all_variables().run()
         
-        imgs_in = [util.get_image(path, config.image_size, input_transform=config.input_transform) for path in paths_in]
-        imgs_in = np.array(imgs_in).astype(np.float32)
-        
         self.load_checkpoints()
         
         for i in range(n):
+            img_in = np.array(util.get_image(paths_in[i], config.image_size, input_transform=config.input_transform)).astype(np.float32)
             print("Image [{:4d}/{:4d}] path: {}".format(i+1, n, paths_out[i]))
             output = self.sess.run([self.images_fake],
                 feed_dict={
                     self.batch_size : 1,
-                    self.images_input : [imgs_in[i]],
+                    self.images_input : [img_in],
                     self.is_training : True})[0]                 
             util.save_images(np.array(output).astype(np.float32), [paths_out[i]])
 
