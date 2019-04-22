@@ -404,7 +404,7 @@ class GAN():
                 feed_dict={
                     self.batch_size : 1,
                     self.images_input : [imgs_in[i]],
-                    self.is_training : False})[0]
+                    self.is_training : True})[0]
             images_out[i] = output
         
         util.save_images(images_out, paths_out)
