@@ -11,7 +11,6 @@ from . import util
 class GAN():
     """
     PARAMETERS
-        sess:   the TensorFlow session to run in
         image_size:   the width of the images, which should be the same as the height as we like square inputs
         c_dim:   number of image cannels (gray=1, RGB=3)
     """
@@ -139,7 +138,6 @@ class GAN():
         self.saver_discriminator = tf.train.Saver(max_to_keep=1, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="discriminator"))
     
     def train(self, sess, config):
-        self.sess = sess
         sample_width = (int)(math.sqrt(config.sample_size))
         data_real = util.get_paths(config.dataset_real)
 
@@ -194,7 +192,7 @@ class GAN():
             self.d_loss_real_sum,
             self.d_loss_sum])
 
-        self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
+        self.writer = tf.summary.FileWriter(self.log_dir, sess.graph)
         
         sample_files_input = data_input[0:config.sample_size]
         sample_input = [util.get_image(sample_file, self.image_size, input_transform=config.input_transform) for sample_file in sample_files_input]
@@ -209,7 +207,7 @@ class GAN():
         counter = 1
         start_time = time.time()
         
-        self.load_checkpoints()
+        self.load_checkpoints(sess)
         
         for epoch in range(config.epoch):
             batch_idxs = min(len(data_input), config.train_size) // config.batch_size
@@ -225,7 +223,7 @@ class GAN():
                 batch_bboxes = np.array([dict_input[key] for key in batch_files_input]).astype(np.int32)
                 
                 #update D network
-                _, summary_str = self.sess.run([d_optim, self.d_sum],
+                _, summary_str = sess.run([d_optim, self.d_sum],
                     feed_dict={
                         self.batch_size : config.batch_size,
                         self.images_real : batch_images_real,
@@ -235,7 +233,7 @@ class GAN():
                 self.writer.add_summary(summary_str, counter)
                 
                 #update G network
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
+                _, summary_str = sess.run([g_optim, self.g_sum],
                     feed_dict={
                         self.batch_size : config.batch_size,
                         self.images_input : batch_images_input,
@@ -247,7 +245,7 @@ class GAN():
                 self.writer.add_summary(summary_str, counter)
                 
                 #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
+                _, summary_str = sess.run([g_optim, self.g_sum],
                     feed_dict={
                         self.batch_size : config.batch_size,
                         self.images_input : batch_images_input,
@@ -284,7 +282,7 @@ class GAN():
                     g_losses = 0.0
                     d_losses = 0.0
                     for i in range(config.sample_size):
-                        sample, d_loss, g_loss = self.sess.run([self.images_fake, self.d_loss, self.g_loss], 
+                        sample, d_loss, g_loss = sess.run([self.images_fake, self.d_loss, self.g_loss], 
                                 feed_dict={
                                     self.batch_size : 1,
                                     self.images_input : [sample_images_input[i]],
@@ -300,10 +298,9 @@ class GAN():
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss / config.batch_size, g_loss / config.batch_size))
                     
                 if np.mod(counter, config.checkpoint_interval) == 0:
-                    self.save(counter)
+                    self.save(sess, counter)
     
     def train_discriminator(self, sess, dir_fake, dir_real, config):
-        self.sess = sess
         paths_fake = util.get_paths(dir_fake)
         paths_real = util.get_paths(dir_real)
 
@@ -328,16 +325,13 @@ class GAN():
             self.d_loss_fake_sum,
             self.d_loss_sum])
 
-        self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
+        self.writer = tf.summary.FileWriter(self.log_dir, sess.graph)
 
         counter = 1
         start_time = time.time()
         
-        self.load_checkpoints()
+        self.load_checkpoints(sess)
 
-        # https://github.com/tensorflow/tensorflow/issues/16455
-        #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        #with tf.control_dependencies(update_ops):
         for epoch in range(config.epoch):
             batch_idxs = min(len(paths_fake), config.train_size) // config.batch_size
 
@@ -349,7 +343,7 @@ class GAN():
                 batch_images_fake = np.array(batch_fake).astype(np.float32)
                 batch_images_real = np.array(batch_real).astype(np.float32)
 
-                errD, errD_fake, errD_real, d_correct_fake, d_correct_real, summary_str = self.sess.run(
+                errD, errD_fake, errD_real, d_correct_fake, d_correct_real, summary_str = sess.run(
                     [d_optim, self.d_loss_fake, self.d_loss_real, self.d_correct_fake, self.d_correct_real, self.d_sum],
                     feed_dict={
                         self.batch_size : config.batch_size,
@@ -365,62 +359,80 @@ class GAN():
                         epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errD_fake, errD_real, d_correct_fake, config.batch_size, d_correct_real, config.batch_size))
                     
                 if np.mod(counter, config.checkpoint_interval) == 2:
-                    self.save(counter)
+                    self.save(sess, counter)
 
     def infer(self, sess, dir_in, dir_out, config):
+        print("Running inference:")
+        print("Input: %s" % dir_in)
+        print("Output: %s" % dir_out)
+
         assert(os.path.isdir(dir_in))
-
-        if (not os.path.exists(dir_out)):
-            os.makedirs(dir_out)
-
-        self.sess = sess
-
         print("Input dataset is a directory")
         paths_in = util.get_paths(dir_in)
+
         n = len(paths_in)
         assert(n > 0)
+        print("Number of images: %i" % n)
         
+        print("Creating output directory")
+        os.makedirs(dir_out, exist_ok=True)
+
         paths_out = []
         for path in paths_in:
             path_list = os.path.normpath(path).split(os.sep)
             path_list[0] = "%s/%s/%s" % (dir_out, self.model_name, path_list[0])
             new_path = os.path.join(*path_list)
             paths_out.append(new_path)
-
+        
+        print("Initializing TensorFlow variables...")
         try:
             tf.global_variables_initializer().run()
         except:
             tf.initialize_all_variables().run()
         
-        self.load_checkpoints()
+        self.load_checkpoints(sess)
         
-        for i in range(n):
-            img_in = np.array(util.get_image(paths_in[i], config.image_size, input_transform=config.input_transform)).astype(np.float32)
-            print("Image [{:4d}/{:4d}] path: {}".format(i+1, n, paths_out[i]))
-            output = self.sess.run([self.images_fake],
-                feed_dict={
-                    self.batch_size : 1,
-                    self.images_input : [img_in],
-                    self.is_training : True})[0]                 
-            util.save_images(np.array(output).astype(np.float32), [paths_out[i]])
+        n_batches = n // config.batch_size
+        n_extra = n % config.batch_size
 
-    def save(self, step):
-        """Save the current state of the model to the checkpoint directory"""
+        ia = 0
+        ib = n_extra if n_extra > 0 else config.batch_size
+
+        start_time = time.time()
+
+        for i in range(n_batches + 1):
+            b_pth_out = paths_out[ia:ib]
+            b_pth_in = paths_in[ia:ib]
+            b_img = [util.get_image(f, config.image_size, input_transform=config.input_transform) for f in b_pth_in]
+            b_img = np.array(b_img).astype(np.float32)
+            
+            output, = sess.run([self.images_fake], feed_dict={
+                self.batch_size : config.batch_size,
+                self.images_input : b_img,
+                self.is_training : True})
+
+            util.save_images(output, b_pth_out)
+            print("Images [{:4d}/{:4d}]".format(ib, n))
+
+            ia = ib
+            ib += config.batch_size
+
+        print("Inference completed in {:4.4f}".format(time.time() - start_time))
+
+    def save(self, sess, step):
         if not os.path.exists(self.checkpoint_dir_g):
             os.makedirs(self.checkpoint_dir_g)
-        self.saver_generator.save(self.sess, self.checkpoint_path_g, global_step=step)
+        self.saver_generator.save(sess, self.checkpoint_path_g, global_step=step)
         if not os.path.exists(self.checkpoint_dir_d):
             os.makedirs(self.checkpoint_dir_d)
-        self.saver_discriminator.save(self.sess, self.checkpoint_path_d, global_step=step)
+        self.saver_discriminator.save(sess, self.checkpoint_path_d, global_step=step)
 
-    def load_checkpoints(self):
-        """Load a model from the checkpoint directory if it exists"""
-
+    def load_checkpoints(self, sess):
         print("[*] Reading generator checkpoints for model %s..." % self.generator.name())
         ckpt_g = tf.train.get_checkpoint_state(self.checkpoint_dir_g)
 
         if ckpt_g and ckpt_g.model_checkpoint_path:
-            self.saver_generator.restore(self.sess, ckpt_g.model_checkpoint_path)
+            self.saver_generator.restore(sess, ckpt_g.model_checkpoint_path)
             print("An existing generator model for %s was found - delete the directory or specify a new one with --checkpoint_dir" % self.generator.name())
         else:
             print("No generator model for %s found - initializing a new one" % self.generator.name())
@@ -429,7 +441,7 @@ class GAN():
         ckpt_d = tf.train.get_checkpoint_state(self.checkpoint_dir_d)
 
         if ckpt_d and ckpt_d.model_checkpoint_path:
-            self.saver_discriminator.restore(self.sess, ckpt_d.model_checkpoint_path)
+            self.saver_discriminator.restore(sess, ckpt_d.model_checkpoint_path)
             print("An existing discriminator model for %s was found - delete the directory or specify a new one with --checkpoint_dir" % self.discriminator.name())
         else:
             print("No discriminator model for %s found - initializing a new one" % self.discriminator.name())

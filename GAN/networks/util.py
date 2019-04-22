@@ -33,10 +33,10 @@ def resize_bounding_boxes(bounding_boxes, new_size):
         yr = new_size / image.shape[1]
         
         # Clamp values to [0, new_size) for the bounding box loss function to work.
-        x0 = max(0, min(xr * val[0], new_size - 1))
-        y0 = max(0, min(yr * val[1], new_size - 1)) 
-        x1 = max(0, min(xr * val[2], new_size - 1))
-        y1 = max(0, min(yr * val[3], new_size - 1))
+        x0 = max(0, min(xr*val[0], new_size - 1))
+        y0 = max(0, min(yr*val[1], new_size - 1)) 
+        x1 = max(0, min(xr*val[2], new_size - 1))
+        y1 = max(0, min(yr*val[3], new_size - 1))
         c = val[4]
         res[path] = [x0, y0, x1, y1, c]
 
@@ -60,11 +60,11 @@ def imread(path):
     return scipy.misc.imread(path, mode="RGB").astype(np.float)
 
 # Transforms the image by cropping and resizing and normalises intensity values between 0 and 1
-def transform(image, npx=64, input_transform=TRANSFORM_RESIZE):
+def transform(image, size=64, input_transform=TRANSFORM_RESIZE):
     if input_transform == TRANSFORM_CROP:
-        output = center_crop(image, npx)
+        output = center_crop(image, size)
     elif input_transform == TRANSFORM_RESIZE:
-        output = scipy.misc.imresize(image, (npx, npx), interp="bicubic")
+        output = scipy.misc.imresize(image, (size, size), interp="bicubic")
     else:
         output = image
     return byte2norm(np.array(output))
@@ -90,24 +90,24 @@ def merge(images, shape):
 
     return img
     
-# Save array of images to disk
-def imsave(images, paths):
-    for img, pth in zip(images, paths):
-        os.makedirs(os.path.dirname(pth), exist_ok=True)
-        scipy.misc.imsave(pth, img)
+# Save image to disk
+def save_image(image, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return scipy.misc.imsave(path, norm2byte(image))
 
-# Save images to disk
+# Save array of images
 def save_images(images, paths):
-    return imsave(norm2byte(images), paths)
+    for img, pth in zip(images, paths):
+        save_image(img, pth)
 
-# Save images as a single mosaic to disk
+# Save images as a single mosaic
 def save_mosaic(images, shape, path):
-    return imsave([merge(norm2byte(images), shape)], [path])
+    return save_image(merge(images, shape), path)
 
 # Redistribute intensity values from [0 1] to [0 255]
 def norm2byte(x):
-    return (255 * x).astype(np.uint8)
+    return (255*x).astype(np.uint8)
 
 # Redistribute intensity values from [0 255] to [0 1]
 def byte2norm(x):
-    return x / 255.0
+    return x/255.0
