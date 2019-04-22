@@ -5,7 +5,7 @@ class Generator:
         super(Generator, self).__init__()
 
     @abstractmethod
-    def __call__(self, image, reuse=False, is_training=False):
+    def __call__(self, image, is_training=False):
         pass
 
     def name(self):

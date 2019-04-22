@@ -16,43 +16,50 @@ class SRGANDisctriminator(Disctriminator):
                 scope.reuse_variables()
 
             x = conv2d(image, 64, (3, 3), (1, 1), name='d_00_conv')
-            x = lrelu(x, 0.95)
+            x = lrelu(x, 0.2)
 
             x = conv2d(x, 128, (3, 3), (2, 2), name='d_01_conv')
+            x = lrelu(x, 0.2)
             x = self.bns[0](x, is_training)
-            x = lrelu(x, 0.95)
-            """ 128x128x128"""
+
+            # 128x128x128
             x = conv2d(x, 128, (3, 3), (2, 2), name='d_02_conv')
+            x = lrelu(x, 0.2)
             x = self.bns[1](x, is_training)
-            x = lrelu(x, 0.95)
 
-            """ 64x64x128 """
+            # 64x64x128
             x = conv2d(x, 256, (3, 3), (2, 2), name='d_03_conv')
+            x = lrelu(x, 0.2)
             x = self.bns[2](x, is_training)
-            x = lrelu(x, 0.95)
 
-            """ 32x32x128 """
+            # 32x32x128
             x = conv2d(x, 256, (3, 3), (2, 2), name='d_04_conv')
+            x = lrelu(x, 0.2)
             x = self.bns[3](x, is_training)
-            x = lrelu(x, 0.95)
-            ''' 16x16x256 '''
-            x = conv2d(x, 256, (3, 3), (2, 2), name='d_05_conv')
-            x = self.bns[4](x, is_training)
-            x = lrelu(x, 0.95)
-            ''' 8x8x256 '''
-            x = conv2d(x, 512, (2, 2), (2, 2), name='d_06_conv')
-            x = self.bns[5](x, is_training)
-            x = lrelu(x, 0.95)
 
-            """ 4x4x512 """
+            # 16x16x256
+            x = conv2d(x, 256, (3, 3), (2, 2), name='d_05_conv')
+            x = lrelu(x, 0.2)
+            x = self.bns[4](x, is_training)
+
+            # 8x8x256
+            x = conv2d(x, 512, (2, 2), (2, 2), name='d_06_conv')
+            x = lrelu(x, 0.2)
+            x = self.bns[5](x, is_training)
+
+            # 4x4x512
             x = conv2d(x, 1024, (1, 1), (2, 2), name='d_07_conv')
+            x = lrelu(x, 0.2)
             x = self.bns[6](x, is_training)
-            x = lrelu(x, 0.95)
-            """ 2x2x1024 """
-            x = linear(tf.reshape(x, [-1, 2 * 2 * 1024]), 100, "d_08_lin")
-            """100"""
+
+            # 2x2x1024
+            x = flatten(x)
+            x = linear(x, 100, "d_08_lin")
+
+            # 100
             x = linear(x, 10, "d_09_lin")
-            """ 10 """
+
+            # 10
             x = linear(x, 1, "d_10_lin")
 
             return x

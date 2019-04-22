@@ -51,7 +51,7 @@ class GAN():
         self.bboxes = tf.placeholder(tf.int32, shape=(None, 5))
         self.batch_size = tf.placeholder(tf.int32, shape=())
 
-        self.images_fake = self.generator(self.images_input, self.is_training)
+        self.images_fake = self.generator(self.images_input, is_training=self.is_training)
 
         self.D_real = self.discriminator(self.images_real, is_training=self.is_training)
         self.D_fake = self.discriminator(self.images_fake, reuse=True, is_training=self.is_training)
@@ -161,8 +161,12 @@ class GAN():
 
         assert(len(data_input) > 0 and len(data_real) > 0)
         
-        d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.d_loss, var_list=self.d_vars)
-        g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.g_loss, var_list=self.g_vars)
+        # https://github.com/tensorflow/tensorflow/issues/16455
+        # https://git.alphagriffin.com/O.P.P/FiryZeplin-deep-learning/src/ee5b04a3ff360d8276d881e41265d7d45f47ccc9/batch-norm/Batch_Normalization_Solutions.ipynb
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.d_loss, var_list=self.d_vars)
+            g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.g_loss, var_list=self.g_vars)
         
         try:
             tf.global_variables_initializer().run()
@@ -220,28 +224,57 @@ class GAN():
                 
                 batch_bboxes = np.array([dict_input[key] for key in batch_files_input]).astype(np.int32)
                 
-                # https://github.com/tensorflow/tensorflow/issues/16455
-                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-                with tf.control_dependencies(update_ops):
-                    #update D network
-                    _, summary_str = self.sess.run([d_optim, self.d_sum],
-                                                feed_dict={self.batch_size : config.batch_size, self.images_real : batch_images_real, self.images_input : batch_images_input, self.is_training: True})
-                    self.writer.add_summary(summary_str, counter)
-                    
-                    #update G network
-                    _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                                feed_dict={self.batch_size : config.batch_size, self.images_input : batch_images_input, self.images_real : batch_images_real, self.bboxes : batch_bboxes, self.is_training : True, self.use_bboxes : self.is_input_annotations})
-                    self.writer.add_summary(summary_str, counter)
-                    
-                    #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
-                    _, summary_str = self.sess.run([g_optim, self.g_sum],
-                                                feed_dict={self.batch_size : config.batch_size, self.images_input : batch_images_input, self.images_real : batch_images_real, self.bboxes : batch_bboxes, self.is_training: True, self.use_bboxes : self.is_input_annotations})
-                    self.writer.add_summary(summary_str, counter)
-                    
-                    errD_fake = self.d_loss_fake.eval({self.batch_size : config.batch_size, self.images_input : batch_images_input, self.is_training : False})
-                    errD_real = self.d_loss_real.eval({self.batch_size : config.batch_size, self.images_real : batch_images_real, self.is_training : False})
-                    errG = self.g_loss.eval({self.batch_size : config.batch_size, self.images_input : batch_images_input, self.bboxes : batch_bboxes, self.is_training : False, self.use_bboxes : self.is_input_annotations})
+                #update D network
+                _, summary_str = self.sess.run([d_optim, self.d_sum],
+                    feed_dict={
+                        self.batch_size : config.batch_size,
+                        self.images_real : batch_images_real,
+                        self.images_input : batch_images_input,
+                        self.is_training: True})
+
+                self.writer.add_summary(summary_str, counter)
                 
+                #update G network
+                _, summary_str = self.sess.run([g_optim, self.g_sum],
+                    feed_dict={
+                        self.batch_size : config.batch_size,
+                        self.images_input : batch_images_input,
+                        self.images_real : batch_images_real,
+                        self.bboxes : batch_bboxes,
+                        self.is_training : True,
+                        self.use_bboxes : self.is_input_annotations})
+
+                self.writer.add_summary(summary_str, counter)
+                
+                #run g_optim twice to make sure that d_loss does not go to zero (not in the paper)
+                _, summary_str = self.sess.run([g_optim, self.g_sum],
+                    feed_dict={
+                        self.batch_size : config.batch_size,
+                        self.images_input : batch_images_input,
+                        self.images_real : batch_images_real,
+                        self.bboxes : batch_bboxes,
+                        self.is_training: True,
+                        self.use_bboxes : self.is_input_annotations})
+
+                self.writer.add_summary(summary_str, counter)
+                
+                errD_fake = self.d_loss_fake.eval({
+                    self.batch_size : config.batch_size,
+                    self.images_input : batch_images_input,
+                    self.is_training : False})
+
+                errD_real = self.d_loss_real.eval({
+                    self.batch_size : config.batch_size,
+                    self.images_real : batch_images_real,
+                    self.is_training : False})
+
+                errG = self.g_loss.eval({
+                    self.batch_size : config.batch_size,
+                    self.images_input : batch_images_input,
+                    self.bboxes : batch_bboxes,
+                    self.is_training : False,
+                    self.use_bboxes : self.is_input_annotations})
+            
                 counter += 1
                 print("Epoch [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
                         epoch, idx, batch_idxs, time.time() - start_time, errD_fake + errD_real, errG))
@@ -252,10 +285,16 @@ class GAN():
                     d_losses = 0.0
                     for i in range(config.sample_size):
                         sample, d_loss, g_loss = self.sess.run([self.images_fake, self.d_loss, self.g_loss], 
-                                                            feed_dict={self.batch_size : config.batch_size, self.images_input : [sample_images_input[i]], self.bboxes : [sample_bboxes[i]], self.images_real : [sample_images_real[i]], self.is_training : False, self.use_bboxes : self.is_input_annotations})
+                                feed_dict={
+                                    self.batch_size : 1,
+                                    self.images_input : [sample_images_input[i]],
+                                    self.bboxes : [sample_bboxes[i]],
+                                    self.images_real : [sample_images_real[i]],
+                                    self.is_training : False,
+                                    self.use_bboxes : self.is_input_annotations})
                         d_losses += d_loss
                         g_losses += g_loss
-                        samples[i] = sample
+                        samples[i] = sample[0]
                     
                     util.save_mosaic(samples, [sample_width, sample_width], os.path.join(self.sample_dir, "train_{:02d}-{:04d}.png".format(epoch, idx)))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss / config.batch_size, g_loss / config.batch_size))
@@ -283,8 +322,10 @@ class GAN():
         self.d_sum = tf.summary.merge([
             self.fake_sum,
             self.real_sum,
+            self.d_fake_sum,
             self.d_real_sum,
             self.d_loss_real_sum,
+            self.d_loss_fake_sum,
             self.d_loss_sum])
 
         self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
@@ -310,7 +351,11 @@ class GAN():
 
                 errD, errD_fake, errD_real, d_correct_fake, d_correct_real, summary_str = self.sess.run(
                     [d_optim, self.d_loss_fake, self.d_loss_real, self.d_correct_fake, self.d_correct_real, self.d_sum],
-                    feed_dict={self.batch_size : config.batch_size, self.images_fake : batch_images_fake, self.images_real : batch_images_real, self.is_training: True})
+                    feed_dict={
+                        self.batch_size : config.batch_size,
+                        self.images_fake : batch_images_fake,
+                        self.images_real : batch_images_real,
+                        self.is_training: True})
                 
                 self.writer.add_summary(summary_str, counter)
                 
@@ -355,7 +400,11 @@ class GAN():
         images_out = np.zeros((n, self.image_size, self.image_size, self.c_dim))
 
         for i in range(n):
-            output = self.sess.run([self.images_fake], feed_dict={self.batch_size : 1, self.images_input : [imgs_in[i]], self.is_training : True})[0]
+            output = self.sess.run([self.images_fake],
+                feed_dict={
+                    self.batch_size : 1,
+                    self.images_input : [imgs_in[i]],
+                    self.is_training : False})[0]
             images_out[i] = output
         
         util.save_images(images_out, paths_out)

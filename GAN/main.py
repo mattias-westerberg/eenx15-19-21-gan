@@ -26,13 +26,13 @@ config.intra_op_parallelism_threads = 8
 # (ARG1, ARG2, ARG3) = (NAME OF THE FLAG, DEFAULT VALUE, DESCRIPTION)
 flags = tf.app.flags
 flags.DEFINE_integer("epoch", 200, "Number of epochs to train [20]")
-flags.DEFINE_float("learning_rate", 0.0002, "Learning rate for adam optimiser [0.0002]")
+flags.DEFINE_float("learning_rate", 0.0010, "Learning rate for adam optimiser [0.0002]")
 flags.DEFINE_float("beta1", 0.5, "Momentum term for adam optimiser [0.5]")
-flags.DEFINE_integer("train_size", 9652, "The size of training images [np.inf]")
+flags.DEFINE_integer("train_size", 1900, "The size of training images [np.inf]")
 flags.DEFINE_integer("batch_size", 1, "The batch-size (number of images to train at once) [64]")
 flags.DEFINE_integer("image_size", 256, "The size of the images [n x n] [64]")
-flags.DEFINE_string("dataset_real", "tests/test_images_night", "Real dataset directory [tests/nexar_night_c256].")
-flags.DEFINE_string("dataset_input", "tests/test_images_day", "Input dataset directory [tests/lisa_c256].")
+flags.DEFINE_string("dataset_real", "tests/bddnex_c256", "Real dataset directory [tests/nexar_night_c256].")
+flags.DEFINE_string("dataset_input", "tests/lisa_c256.txt", "Input dataset directory [tests/lisa_c256].")
 flags.DEFINE_string("output_dir", "outputs", "Directory name to save the outputs of the model [outputs]")
 flags.DEFINE_string("input_transform", "resize", "How to pre-process the input images [resize]")
 flags.DEFINE_integer("sample_interval", 16, "Number of epochs between samples [16]")
@@ -40,7 +40,7 @@ flags.DEFINE_integer("sample_size", 16, "Number of samples to generate [16]")
 flags.DEFINE_integer("checkpoint_interval", 16, "Number of epochs between checkpoints [32]")
 FLAGS = flags.FLAGS
 
-gan_even = GAN("EvenGAN", EvenGenerator(256), SRGANDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
+gan_even = GAN("EvenGAN", EvenGenerator(256), CNNDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
 
 
 #gan_auto_encoder = GAN("AutoEncoderGAN", AutoEncoderGenerator(256), CNNDisctriminator(256), image_size=256, c_dim=3, output_dir="outputs", bbox_weight=1.0, image_weight=1.0)
@@ -52,9 +52,9 @@ gan_even = GAN("EvenGAN", EvenGenerator(256), SRGANDisctriminator(256), image_si
 with tf.Session(config=config) as sess:
     gan_even.train(sess, FLAGS)
 
-    #gan_even.infer(sess, "tests/test_inference", "inference_output", FLAGS)
+    #gan_ff.infer(sess, "tests/test_inference", "inference_output", FLAGS)
 
     #FLAGS.checkpoint_interval = 100
     #FLAGS.batch_size = 4
-    #FLAGS.learning_rate = 0.0001
-    #gan_ff.train_discriminator(sess, "tests/lisa_c256", "tests/nexar_night_c256", FLAGS)
+    #FLAGS.learning_rate = 0.000001
+    #gan_ff.train_discriminator(sess, "tests/lisa_c256", "tests/bddnex_c256", FLAGS)

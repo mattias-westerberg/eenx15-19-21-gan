@@ -4,7 +4,7 @@ import scipy.misc
 
 #BATCH NORMALISATION OBJECT
 class batch_norm(object):
-    def __init__(self, epsilon=1e-5, momentum=0.9, name="batch_norm"):
+    def __init__(self, epsilon=1e-5, momentum=0.99, name="batch_norm"):
         with tf.variable_scope(name):
             self.epsilon = epsilon
             self.momentum = momentum
@@ -12,7 +12,7 @@ class batch_norm(object):
 
     def __call__(self, x, training):
         with tf.variable_scope(self.name):
-            return tf.layers.batch_normalization(x, momentum=self.momentum, epsilon=self.epsilon,
+            return tf.layers.batch_normalization(x, trainable=True, momentum=self.momentum, epsilon=self.epsilon,
                                                 center=True, scale=True, training=training)   
 
 #CONVOLUTION FUNCTION
@@ -61,10 +61,10 @@ def dropout(x, rate=0.5, name='dropout'):
 
         
 #LINEAR FUNCTION
-def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):
+def linear(input_, output_size, name=None, stddev=0.02, bias_start=0.0, with_w=False):
     shape = input_.get_shape().as_list()
 
-    with tf.variable_scope(scope or "Linear"):
+    with tf.variable_scope(name or "Linear"):
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
                                  tf.random_normal_initializer(stddev=stddev))
         bias = tf.get_variable("bias", [output_size],
@@ -74,8 +74,8 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
         else:
             return tf.matmul(input_, matrix) + bias
 
-def flatten(x, output_dim):
-    return tf.reshape(x, [-1, output_dim])
+def flatten(x):
+    return tf.layers.flatten(x)
 
 def max_pool(input_, k, s, name="MaxPool"):
     with tf.variable_scope(name):

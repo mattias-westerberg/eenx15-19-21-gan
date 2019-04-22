@@ -104,7 +104,7 @@ def transform(image, npx=64, input_transform=TRANSFORM_RESIZE):
         output = scipy.misc.imresize(image, (npx, npx), interp='bicubic')
     else:
         output = image
-    return np.array(output) / 127.5 - 1.0
+    return np.array(output) / 255.0
 
 # IMAGE CROPPING FUNCTION
 def center_crop(x, crop_h, crop_w=None, resize_w=64):
@@ -172,17 +172,17 @@ def save_images(images, paths):
     """ takes an image and saves it to disk. Redistributes
     intensity values [-1 1] from [0 255]
     """
-    imgs = inverse_transform(images)
-    imgs = (255 * imgs).astype(np.uint8)
+    #imgs = inverse_transform(images)
+    imgs = (255 * images).astype(np.uint8)
     return imsave(imgs, paths)
 
 #SAVE IMAGE FUNCTION
 def save_mosaic(images, shape, path):
     """ takes an image and saves it to disk. Redistributes
-    intensity values [-1 1] from [0 255]
+    intensity values from [0 1] to [0 255]
     """
-    imgs = inverse_transform(images)
-    imgs = (255 * imgs).astype(np.uint8)
+    #imgs = inverse_transform(images)
+    imgs = (255 * images).astype(np.uint8)
     img = merge(imgs, shape)
     return imsave([img], [path])
 
