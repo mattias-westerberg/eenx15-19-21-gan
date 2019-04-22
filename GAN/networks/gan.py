@@ -290,7 +290,7 @@ class GAN():
                                     self.images_input : [sample_images_input[i]],
                                     self.bboxes : [sample_bboxes[i]],
                                     self.images_real : [sample_images_real[i]],
-                                    self.is_training : False,
+                                    self.is_training : True,
                                     self.use_bboxes : self.is_input_annotations})
                         d_losses += d_loss
                         g_losses += g_loss

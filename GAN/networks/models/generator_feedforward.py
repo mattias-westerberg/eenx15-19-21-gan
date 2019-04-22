@@ -10,8 +10,8 @@ class FeedForwardGenerator(Generator):
     def __init__(self, image_size):
         Generator.__init__(self)
         self.image_size = image_size
-        self.ff_block1 = tf.Variable(0.3, name='ff_block1')   # Trainable=True default
-        self.ff_block2 = tf.Variable(0.3, name='ff_block2')
+        self.ff_block1 = tf.Variable(0.3, name="ff_block1")   # Trainable=True default
+        self.ff_block2 = tf.Variable(0.3, name="ff_block2")
         assert(image_size == 256)
 
     def __call__(self, image, is_training=False):
@@ -32,14 +32,14 @@ class FeedForwardGenerator(Generator):
             # Increase feature maps to 64
 
             # 256x256x3
-            fm1 = conv2d(image, 64, (3, 3), (1, 1), name='g_00_conv')
+            fm1 = conv2d(image, 64, (3, 3), (1, 1), name="g_00_conv")
             x = lrelu(fm1, 0.2)
 
             # Same amount of feature maps (64), saves feature maps from block 1 to variable fm1
             # Down to 128x128
             
             # 256x256x64
-            x = conv2d(x, 64, (3, 3), (2, 2), name='g_01_conv')
+            x = conv2d(x, 64, (3, 3), (2, 2), name="g_01_conv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_01_bns")
 
@@ -54,20 +54,20 @@ class FeedForwardGenerator(Generator):
             # Increase feature maps to 128
 
             # 128x128x64
-            x = conv2d(x, 128, (3, 3), (1, 1), name='g_02_conv')
+            x = conv2d(x, 128, (3, 3), (1, 1), name="g_02_conv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_02_bns")
 
             # Same amount of feature maps (128)
             # 128x128x128
-            fm2 = conv2d(x, 128, (3, 3), (1, 1), name='g_03_conv')
+            fm2 = conv2d(x, 128, (3, 3), (1, 1), name="g_03_conv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_03_bns")
 
             # Same amount of feature maps (128), saves feature maps from block 2 to variable fm2
             # Down to 64x64
             # 128x128x128
-            x = conv2d(x, 128, (3, 3), (2, 2), name='g_04_conv')
+            x = conv2d(x, 128, (3, 3), (2, 2), name="g_04_conv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_04_bns")
 
@@ -81,13 +81,13 @@ class FeedForwardGenerator(Generator):
 
             # Same amount of feature maps (128)
             # 64x64x128
-            x = conv2d(x, 128, (3, 3), (1, 1), name='g_05_conv')
+            x = conv2d(x, 128, (3, 3), (1, 1), name="g_05_conv")
             x = lrelu(x, 0.8)
             x = batch_norm(x, training=is_training, name="g_05_bns")
 
             # Increase feature maps to 256
             # 64x64x128
-            x = conv2d(x, 256, (3, 3), (1, 1), name='g_06_conv')
+            x = conv2d(x, 256, (3, 3), (1, 1), name="g_06_conv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_06_bns")
 
@@ -95,7 +95,7 @@ class FeedForwardGenerator(Generator):
             # Up to 128x128
 
             # 64x64x256
-            x = deconv2d(x, [self.batch_size, 128, 128, 128], (3, 3), (2, 2), name='g_07_deconv')
+            x = deconv2d(x, [self.batch_size, 128, 128, 128], (3, 3), (2, 2), name="g_07_deconv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_07_bns")
 
@@ -110,20 +110,20 @@ class FeedForwardGenerator(Generator):
             # MERGE LAYER: Half of the feature maps come from block 2 and the rest from block 3
             # 128x128x128
             x = tf.concat([x, fm2*self.ff_block2], axis=-1)
-            x = deconv2d(x, [self.batch_size, 128, 128, 256], (3, 3), (1, 1), name='g_08_deconvMerge')
+            x = deconv2d(x, [self.batch_size, 128, 128, 256], (3, 3), (1, 1), name="g_08_deconvMerge")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_08_bns")
 
             # Decrease feature maps to 128
             # 128x128x256
-            x = deconv2d(x, [self.batch_size, 128, 128, 128], (3, 3), (1, 1), name='g_09_deconv')
+            x = deconv2d(x, [self.batch_size, 128, 128, 128], (3, 3), (1, 1), name="g_09_deconv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_09_bns")
 
             # Down to 64 feature maps
             # Up to 256x256
             # 128x128x128
-            x = deconv2d(x, [self.batch_size, 256, 256, 64], (3, 3), (2, 2), name='g_10_deconv')
+            x = deconv2d(x, [self.batch_size, 256, 256, 64], (3, 3), (2, 2), name="g_10_deconv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_10_bns")
 
@@ -138,20 +138,20 @@ class FeedForwardGenerator(Generator):
             # MERGE LAYER: Half of the feature maps come from block 1 and the rest from block 4
             # 256x256x64
             x = tf.concat([x, fm1*self.ff_block1], axis=-1)
-            x = deconv2d(x, [self.batch_size, 256, 256, 128], (3, 3), (1, 1), name='g_11_deconvMerge')
+            x = deconv2d(x, [self.batch_size, 256, 256, 128], (3, 3), (1, 1), name="g_11_deconvMerge")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_11_bns")
 
             # Decrease feature maps to 64
             # 256x256x128
-            x = deconv2d(x, [self.batch_size, 256, 256, 64], (3, 3), (1, 1), name='g_12_deconv')
+            x = deconv2d(x, [self.batch_size, 256, 256, 64], (3, 3), (1, 1), name="g_12_deconv")
             x = lrelu(x, 0.2)
             x = batch_norm(x, training=is_training, name="g_12_bns")
 
             # Down to 3 feature maps
             # Dense layer, Kernel=(1,1)
             # 256x256x64
-            x = conv2d(x, 3, (1, 1), (1, 1), name='g_13_dense')
+            x = conv2d(x, 3, (1, 1), (1, 1), name="g_13_dense")
             x = lrelu(x, 0.2)
 
             # End of block 5
