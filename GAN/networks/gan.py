@@ -397,17 +397,14 @@ class GAN():
         
         self.load_checkpoints()
         
-        images_out = np.zeros((n, self.image_size, self.image_size, self.c_dim))
-
         for i in range(n):
+            print("Image [{:4d}/{:4d}] path: {}".format(i+1, n, paths_out[i]))
             output = self.sess.run([self.images_fake],
                 feed_dict={
                     self.batch_size : 1,
                     self.images_input : [imgs_in[i]],
-                    self.is_training : True})[0]
-            images_out[i] = output
-        
-        util.save_images(images_out, paths_out)
+                    self.is_training : True})[0]                 
+            util.save_images(np.array(output).astype(np.float32), [paths_out[i]])
 
     def save(self, step):
         """Save the current state of the model to the checkpoint directory"""

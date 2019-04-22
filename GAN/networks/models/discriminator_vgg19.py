@@ -1,13 +1,13 @@
 import tensorflow as tf
 
-from .discriminator import Disctriminator
+from .discriminator import Discriminator
 from .layers import *
 
 
 # Usually handles 224x224x3 images
-class Discriminator_VGG19(Disctriminator):
+class Discriminator_VGG19(Discriminator):
     def __init__(self, image_size):
-        Disctriminator.__init__(self)
+        Discriminator.__init__(self)
         self.image_size = image_size
 
     def __call__(self, image, reuse=False, is_training=False):

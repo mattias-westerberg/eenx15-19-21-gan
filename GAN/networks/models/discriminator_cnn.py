@@ -1,12 +1,12 @@
 import tensorflow as tf
 
-from .discriminator import Disctriminator
+from .discriminator import Discriminator
 from .layers import *
 
 
-class CNNDisctriminator(Disctriminator):
+class CNNDiscriminator(Discriminator):
     def __init__(self, image_size):
-        Disctriminator.__init__(self)
+        Discriminator.__init__(self)
         self.fm = 32
         self.image_size = image_size
 

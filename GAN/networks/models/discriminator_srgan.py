@@ -1,12 +1,12 @@
 import tensorflow as tf
 
-from .discriminator import Disctriminator
+from .discriminator import Discriminator
 from .layers import *
 
 
-class SRGANDisctriminator(Disctriminator):
+class SRGANDiscriminator(Discriminator):
     def __init__(self, image_size):
-        Disctriminator.__init__(self)
+        Discriminator.__init__(self)
         assert(image_size == 256)
 
     def __call__(self, image, reuse=False, is_training=False):
